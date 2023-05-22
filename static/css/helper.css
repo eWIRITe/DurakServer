@@ -1,0 +1,93 @@
+* {
+  margin: 0;
+  padding: 0;
+}
+
+.header form {
+    padding: 10px;
+}
+
+.header {
+  display: flex;
+}
+
+form.info {
+  background-color: lightblue;
+}
+
+form.login {
+  background-color: lightgreen;
+}
+
+form.registration {
+  background-color: lightcoral;
+}
+
+img.i-avatar {
+  width: 128px;
+  height: 128px;
+}
+
+.info-flex-row-wrap {
+    display: flex;
+}
+
+.info-right {
+    display: flex;
+
+}
+
+.info-right-name {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 150px;
+}
+
+.info-right-chips {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 150px;
+}
+
+.info-right-email {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 150px;
+}
+
+.rooms {
+  background-color: lightgray;
+}
+
+.rooms * {
+  /*! padding: 2px; */
+}
+
+.createroom-titles, .createroom-inputs {
+  display: flex;
+}
+
+.createroom-titles *, .createroom-inputs * {
+  width: 200px;
+  border: black solid 1px;
+  margin: 1px 2px 0 2px;
+}
+.createroom-inputs * {
+  width: 200px;
+}
+.room-private {
+  width: 202px;
+}
+
+.room {
+  display: flex;
+  justify-content: flex-start;
+}
+
+hr {
+  margin-top: 8px;
+  padding-bottom: 8px;
+}

@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='icon/favicon.ico')}}">
+	<link rel="stylesheet" href="{{ url_for('static', filename='css/helper.css')}}">
+	<script type="text/javascript" src="{{ url_for('static', filename='js/sha3.min.js')}}"></script>
+	<script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.min.js')}}"></script>
+	<script>
+		async function login()
+		{
+			let name = document.querySelector(".l-name").value;
+			let password = document.querySelector(".l-password").value;
+			let response = await fetch("http://127.0.0.1:5000/api/login", {
+			    "credentials": "omit",
+			    "headers": {
+			        "Content-Type": "application/x-www-form-urlencoded"
+			    },
+			    "method": "POST",
+			    "mode": "cors",
+			    "body": "name=" + name + "&password=" + sha3_224(password)
+			});
+
+			let json = await response.json();
+			document.querySelector(".token").value = json.token;
+			document.querySelector(".uid").value = json.uid;
+		}
+
+		async function logout()
+		{
+			let token = document.querySelector(".token").value;
+			let response = await fetch("http://127.0.0.1:5000/api/logout?" + new URLSearchParams({ token: token }), {
+				method: "POST"
+			});
+
+			let json = await response.json();
+		}
+
+		async function registration()
+		{
+			let name = document.querySelector(".r-name").value;
+			let password = document.querySelector(".r-password").value;
+			let email = document.querySelector(".r-email").value;
+			let response = await fetch("http://127.0.0.1:5000/api/register_user", {
+			    "credentials": "omit",
+			    "headers": {
+			        "Content-Type": "application/x-www-form-urlencoded"
+			    },
+			    "method": "POST",
+			    "mode": "cors",
+			    "body": "name=" + name + "&password=" + sha3_224(password) + "&email=" + email
+			});
+
+			let json = await response.json();
+		}
+
+		async function change_email()
+		{
+			let token = document.querySelector(".token").value;
+			let old_email = document.querySelector(".ce-old-email").value;
+			let new_email = document.querySelector(".ce-new-email").value;
+			let response = await fetch("http://127.0.0.1:5000/api/change_email?" + new URLSearchParams({token: token}), {
+			    "credentials": "omit",
+			    "headers": {
+			        "Content-Type": "application/x-www-form-urlencoded"
+			    },
+			    "method": "POST",
+			    "mode": "cors",
+			    "body": "old_email=" + old_email + "&new_email=" + new_email
+			});
+
+			let json = await response.json();
+		}
+
+		async function get_chips()
+		{
+			let token = document.querySelector(".token").value;
+			let response = await fetch("http://127.0.0.1:5000/api/get_chips?" + new URLSearchParams({token: token}), {
+			    "credentials": "omit",
+			    "method": "GET",
+			    "mode": "cors"
+			});
+
+			let json = await response.json();
+
+			document.querySelector(".chips").value = json.chips;
+		}
+
+		async function get_name()
+		{
+			let token = document.querySelector(".token").value;
+			let uid = document.querySelector(".i-uid").value;
+			let response = await fetch("http://127.0.0.1:5000/api/get_username/" + uid + "?" + new URLSearchParams({token: token}), {
+			    "credentials": "omit",
+			    "method": "GET",
+			    "mode": "cors"
+			});
+
+			let json = await response.json();
+
+			document.querySelector(".i-name").value = json.username;
+		}
+
+		async function upload_avatar(file)
+		{
+			let token = document.querySelector(".token").value;
+			let formData = new FormData();
+			formData.append("avatar", file);
+
+			let response = await fetch("http://127.0.0.1:5000/api/upload_avatar?" + new URLSearchParams({token: token}), {
+				"method": "POST",
+				"body": formData,
+				"mode": "cors"
+			});
+
+			let json = await response.json();
+		}
+
+		async function select_file()
+		{
+		    let file = document.querySelector(".i-setavatar").files[0];
+			upload_avatar(file);
+		}
+
+		async function get_avatar()
+		{
+			let uid = Number(document.querySelector(".i-avatar-uid").value)
+			let token = document.querySelector(".token").value;
+			let response = await fetch("http://127.0.0.1:5000/api/get_avatar/" + uid + "?" + new URLSearchParams({token: token}), {
+			    method: "GET",
+			    headers: {
+			        "Content-Type": "image/png",
+			    },
+				"mode": "cors"
+			});
+
+			let blob = await response.blob();
+			document.querySelector("img.i-avatar").src = URL.createObjectURL(blob);
+		}
+	</script>
+	<script>
+		const socket = io("ws://127.0.0.1:5000/");
+
+		// send a message to the server
+		//socket.emit("srv_battle", "sdg43fauifhg7sdfhgsd7hg89h23r0fj0", "дама буби", "туз буби");
+
+		function getRanHex(size) {
+			return [...Array(size)].map(() => Math.floor(Math.random() * 16).toString(16)).join('');
+		}
+
+		function join_room() {
+
+		}
+
+		function exit_room() {
+
+		}
+
+		function isExistRoom(rid) {
+			return document.querySelector(".room#_" + rid);
+		}
+
+		function createRoom(roomJSON) {
+			let roomHTMLGenerator = (roomJSON) => {
+				let divGenerator = (className, text="") => {
+					let div = document.createElement("div");
+					div.className = className;
+					div.innerHTML = text;
+
+					return div;
+				}
+
+				let buttonGenerator = (className, text="", callback) => {
+					let btn = document.createElement("input");
+					btn.type = "button";
+					btn.className = className;
+					btn.value = text;
+					btn.addEventListener("click", callback);
+
+					return btn;
+				}
+
+				let room = divGenerator("room");
+				room.id = "_" + roomJSON.rid;
+				
+				room.appendChild(divGenerator("room-name", "Room-" + roomJSON.rid));
+				room.appendChild(document.createTextNode("\u00A0"));
+
+				room.appendChild(divGenerator("", "игроков"));
+				room.appendChild(document.createTextNode("\u00A0"));
+
+				room.appendChild(divGenerator("room-players", roomJSON.players));
+				room.appendChild(divGenerator("room-divider", "/"));
+				room.appendChild(divGenerator("room-mxplayers", roomJSON.mxplayers));
+				room.appendChild(document.createTextNode("\u00A0"));
+
+				room.appendChild(divGenerator("room-gtype", roomJSON.gtype));
+				//room.appendChild(document.createTextNode("\u00A0"));
+
+				room.appendChild(divGenerator("room-ncards", "/" + roomJSON.ncards));
+				room.appendChild(document.createTextNode("\u00A0"));
+
+				room.appendChild(divGenerator("room-bet", roomJSON.bet));
+
+				room.appendChild(buttonGenerator("room-join", "Войти", () => {btn_joinRoom(roomJSON.rid);}));
+				room.appendChild(buttonGenerator("room-join", "Выйти", () => {btn_exitRoom(roomJSON.rid);}));
+
+				return room;
+			}
+
+			let room = roomHTMLGenerator(roomJSON);
+			let roomList = document.querySelector(".room-list");
+			roomList.appendChild(room);
+			return room;
+		}
+
+		socket.on("cl_battle", (uid, attacked, attacking) => {
+			let myuid = document.querySelector(".uid").value;
+
+			if (uid == myuid) {
+				console.log("I attacked", attacked, "with", attacking);
+			} else {
+				console.log(uid, "attacked", attacked, "with", attacking);
+			}
+		});
+
+		socket.on("cl_transfer", (uid, card) => {
+			let myuid = document.querySelector(".uid").value;
+
+			if (uid == myuid) {
+				console.log("I trasfered", card);
+			} else {
+				console.log(uid, "trasfered", card);
+			}
+		});
+
+		socket.on("cl_grab", (uid) => {
+			let myuid = document.querySelector(".uid").value;
+
+			if (uid == myuid) {
+				console.log("I tooked");
+			} else {
+				console.log(uid, "tooked");
+			}
+		});
+
+		socket.on("cl_endTurn", () => {
+			console.log("I finished my turn");
+		});
+
+		socket.on("cl_fold", (uid) => {
+			let myuid = document.querySelector(".uid").value;
+
+			if (uid == myuid) {
+				console.log("I gived up");
+			} else {
+				console.log(uid, "gived up");
+			}
+		});
+
+		socket.on("cl_ready", (uid) => {
+			let myuid = document.querySelector(".uid").value;
+
+			if (uid == myuid) {
+				console.log("I'm ready");
+			} else {
+				console.log(uid, "is ready");
+			}
+		});
+
+		socket.on("cl_ready", (uid) => {
+			let myuid = document.querySelector(".uid").value;
+
+			if (uid == myuid) {
+				console.log("I'm ready");
+			} else {
+				console.log(uid, "is ready");
+			}
+		});
+
+
+
+
+		socket.on("cl_cardDistribution", (cards) => {
+			console.log(cards);
+		});
+
+		socket.on("cl_start", (uid) => {
+			let myuid = document.querySelector(".uid").value;
+
+			if (uid == myuid) {
+				console.log("Now I'm attacker");
+			} else {
+				console.log("Now", uid, "is attacker");
+			}
+		});
+
+		socket.on("cl_finish", (winnersJSON) => {
+			let myuid = document.querySelector(".uid").value;
+
+			// заменить эту шляпу
+			if (uid == myuid) {
+				console.log("I'm winner");
+			} else {
+				console.log(uid, "is winner");
+			}
+		});
+
+		socket.on("cl_trump", (card) => {
+			console.log("Trump card is", card);
+		});
+
+
+
+		socket.on("cl_createRoom", (roomJSON) => {
+			// добавить в список комнат
+			createRoom(roomJSON);
+
+			let uid = document.querySelector(".uid").value;
+
+			// если отправитель Я
+			if (roomJSON.uid == uid) {
+				// как буд-то нажали кнопку
+				btn_joinRoom(roomJSON.rid);
+			}
+		});
+
+		socket.on("cl_joinRoom", (roomJSON) => {
+			if (isExistRoom(roomJSON.rid)) {
+				// добавляем игрока
+				let roomElement = document.querySelector("#_" + roomJSON.rid);
+				let players = roomElement.querySelector(".room-players");
+				players.innerHTML = Number(players.innerHTML) + 1;
+			} else {
+				// добавить в список комнат
+				createRoom(roomJSON);
+			}
+
+			let uid = document.querySelector(".uid").value;
+
+			// если создатель Я
+			if (roomJSON.uid == uid) {
+				// загрузка комнаты
+				join_room();
+			}
+		});
+
+		socket.on("cl_exitRoom", (roomJSON) => {
+			if (isExistRoom(roomJSON.rid)) {
+				// убираем игрока
+				let roomElement = document.querySelector("#_" + roomJSON.rid);
+				let players = roomElement.querySelector(".room-players");
+				players.innerHTML = Number(players.innerHTML) - 1;
+			} else if (roomJSON.players > 0) {
+				// добавить в список комнат
+				createRoom(roomJSON);
+			}
+
+			let uid = document.querySelector(".uid").value;
+
+			// если создатель Я
+			if (roomJSON.uid == uid) {
+				// выход из комнаты
+				exit_room();
+			}
+		});
+
+		function btn_createRoom() {
+			let roomJSON = {};
+			let isprivate = document.querySelector(".room-private").checked;
+			let key = document.querySelector(".room-key").value;
+			let gtype = document.querySelector(".room-type");
+			gtype = gtype.options[gtype.selectedIndex].value;
+			let mxplayers = document.querySelector(".room-mxplayers");
+			mxplayers = mxplayers.options[mxplayers.selectedIndex].value;
+			let ncards = document.querySelector(".room-ncards");
+			ncards = ncards.options[ncards.selectedIndex].value;
+			let bet = document.querySelector(".room-bet");
+			bet = bet.options[bet.selectedIndex].value;
+			let token = document.querySelector(".token").value;
+
+			roomJSON.isprivate = isprivate;
+			roomJSON.key = key;
+			roomJSON.gtype = Number(gtype);
+			roomJSON.mxplayers = Number(mxplayers);
+			roomJSON.ncards = Number(ncards);
+			roomJSON.bet = Number(bet);
+			roomJSON.token = token;
+
+			socket.emit("srv_createRoom", roomJSON);
+		}
+
+		function btn_joinRoom(rid) {
+			let token = document.querySelector(".token").value;
+			let key = document.querySelector(".room-key").value;
+
+			let roomJSON = {};
+			roomJSON.token = token;
+			roomJSON.rid = rid;
+			roomJSON.key = key;
+
+			socket.emit("srv_joinRoom", roomJSON);
+		}
+
+		function btn_exitRoom(rid) {
+			let isprivate = document.querySelector(".room-private").checked;
+			let token = document.querySelector(".token").value;
+
+			let roomJSON = {};
+			roomJSON.token = token;
+			roomJSON.rid = rid;
+
+			socket.emit("srv_exitRoom", roomJSON);
+		}
+
+		function btn_ready() {
+			let token = document.querySelector(".token").value;
+			socket.emit("srv_ready", token);
+		}
+
+	</script>
+</head>
+<body>
+<div class="header">
+	<form class="info">
+		<h1>Инфо</h1>
+		<label>Токен:</label>
+		<input type="text" class="token" size="64">
+		<label>Uid:</label>
+		<input type="text" class="uid" size="8">
+		<div class="info-flex-row-wrap">
+			<div class="info-left">
+				<input type="text" class="i-avatar-uid" size="8">
+				<input type="button" class="i-getavatar" onclick=get_avatar(); value="Получить">
+				<br>
+				<img style="border: solid;" class="i-avatar">
+				<br>
+				<input onchange=select_file(); type="file" class="i-setavatar" accept=".png">
+			</div>
+			<div class="info-right">
+				<div class="info-right-name">
+					<label>Имя:</label>
+					<input type="text" class="i-name" size="16">
+					<input type="button" onclick=get_name(); value="Получить по uid:">
+					<input type="text" class="i-uid" size="16">
+				</div>
+				<div class="info-right-chips">
+					<label>Фишки:</label>
+					<input type="button" onclick=get_chips(); value="Обновить">
+					<input type="text" class="chips" size="16">
+				</div>
+				<div class="info-right-email">
+					<label>Старый email:</label>
+					<input type="text" class="ce-old-email" required size="16">
+					<label>Новый email:</label>
+					<input type="text" class="ce-new-email" size="16">
+					<input type="button" onclick=change_email(); value="Сменить почту">
+				</div>
+			</div>
+		</div>
+	</form>
+	<form class="login">
+		<h1>Вход</h1>
+		<label>Имя:</label>
+		<input type="text" class="l-name" required size="16">
+		<br>
+		<label>Пароль:</label>
+		<input type="text" class="l-password" required size="16">
+		<br>
+		<input type="button" onclick=login(); value="Войти">
+		<input type="button" onclick=logout(); value="Выйти">
+	</form>
+	<form class="registration">
+		<h1>Регистрация</h1>
+		<label>Имя:</label>
+		<input type="text" class="r-name" required size="16">
+		<br>
+		<label>Email:</label>
+		<input type="text" class="r-email" size="16">
+		<br>
+		<label>Пароль:</label>
+		<input type="text" class="r-password" required size="16">
+		<br>
+		<input type="button" onclick=registration(); value="Регистрация">
+	</form>
+	<form class="rating">
+		
+	</form>
+</div>
+<div class="rooms">
+	<form class="room-list">
+		<div class="createroom-titles">
+			<div>Приватная</div>
+			<div>Макс. игроков</div>
+			<div>Тип игры</div>
+			<div>Количество карт</div>
+			<div>Ставка</div>
+		</div>
+		<div class="createroom-inputs">
+			<input type="checkbox" class="room-private">
+			<select class="room-mxplayers">
+				<option value="2">2</option>
+				<option value="3">3</option>
+				<option value="4">4</option>
+				<option value="5">5</option>
+				<option value="6">6</option>
+			</select>
+			<select class="room-type">
+				<option value="0">Обычный</option>
+				<option value="1">Подкидной</option>
+				<option value="2">Переводной</option>
+			</select>
+			<select class="room-ncards">
+				<option value="24">24</option>
+				<option value="36">36</option>
+				<option value="52">52</option>
+			</select>
+			<select class="room-bet">
+				<option value="100">100</option>
+				<option value="500">500</option>
+				<option value="1000">1000</option>
+				<option value="5000">5000</option>
+				<option value="10000">10000</option>
+				<option value="50000">50000</option>
+				<option value="100000">100000</option>
+				<option value="200000">200000</option>
+			</select>
+			<input type="button" value="Создать" onclick=btn_createRoom();>
+			<input type="button" value="Готов" onclick=btn_ready();>
+		</div>
+		<div>Ключ</div><input type="text" class="room-key">
+		<hr>
+	</form>
+</div>
+</body>
+</html>

@@ -1,0 +1,10 @@
+-- TABLE
+CREATE TABLE "avatars" (ID INTEGER PRIMARY KEY, Image BLOB);
+CREATE TABLE "users" (ID INTEGER PRIMARY KEY, Name varchar(20), Email TEXT, Avatar_id INTEGER, Chips INTEGER);
+ 
+-- INDEX
+ 
+-- TRIGGER
+ 
+-- VIEW
+ 
