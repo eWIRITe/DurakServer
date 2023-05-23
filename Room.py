@@ -15,6 +15,7 @@ class Room:
         self.m_nCards = json["cards"]
         self.m_bet = json["bet"]
         self.m_maxPlayers = json["maxPlayers"]
+        self.m_roomOwner = json["roomOwner"]
 
         # service comission
         self.m_comission = comission
@@ -26,7 +27,7 @@ class Room:
         self.m_actions = []
 
         # seats at the table
-        self.m_players = [None for _ in range(self.m_maxPlayers)]
+        self.m_players = []
 
         # list of throwers
         self.m_throwers = []
@@ -111,7 +112,22 @@ class Room:
         self.m_finishCallback = callback
 
     def set_ready(self):
-        self.started = true
+        self.m_isStarted = True
+
+
+    def is_free(self):
+        print("isFreeCheck")
+        if(self.m_isStarted == False):
+            print("not started")
+            print(str(len(self.m_players)))
+            print(str(self.m_maxPlayers))
+            if self.m_maxPlayers > len(self.m_players):
+                print("not full")
+                return True
+        return False
+
+    def get_roomOwner(self):
+        return self.m_roomOwner
 
     def get_rid(self):
         return self.m_rid
@@ -280,7 +296,7 @@ class Room:
         Returns the number of seats which is free
     """
     def get_num_empty_seats(self):
-        return self.m_players.count(None)
+        return self.m_maxPlayers - len(self.m_players)
 
     """
         Returns the number of seats which is taken
@@ -314,7 +330,10 @@ class Room:
         return None
 
     def get_players(self):
-        return self.m_players
+        players = []
+        for ID in self.m_players:
+            players.append(ID.get_uid())
+        return players
 
     """
         Returns the id of a free place
@@ -710,9 +729,7 @@ class Room:
         if self.is_full() or self.get_player(uid):
             return False
 
-        pid = self.get_first_free_place()
-
-        self.m_players[pid] = Player(uid, sid)
+        self.m_players.append(Player(uid, sid))
 
         return True
 

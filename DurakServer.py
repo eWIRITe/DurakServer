@@ -18,6 +18,9 @@ from Card import Card
 from flask import Flask, url_for, redirect, g, request, Response, render_template, send_from_directory
 from flask import send_file
 from flask_socketio import SocketIO, join_room, leave_room, send, emit, rooms
+from flask import jsonify
+import json
+
 
 
 # Can we create a thread that will clean up expired tokens every 6 hours. Every api call will refresh time of token?
@@ -277,23 +280,11 @@ def on_srv_ready(json):
     if not uid:
         return
 
-    # if player is not in the room
-    if len(rooms()) == 1:
-        return
+    room = g_durak_rooms.get(str(json["RoomID"]))
 
-    rid = rooms()[1]
-    room = g_durak_rooms[rid]
-
-    if not room:
-        return
-
-    if float(execSQL("SELECT Chips FROM Users WHERE ID = ?;", (uid,))) < room.get_bet():
-        return
-
-    if room.ready(uid):
-        emit("cl_ready", {"uid":uid}, to=room.get_rid(), broadcast=True)
-
-
+    if room and int(uid) == int(room.get_roomOwner()):
+        room.set_ready()
+        emit("cl_ready", room=str(json["RoomID"]), broadcast=True)
 
 
 ####################################
@@ -368,28 +359,37 @@ def on_srv_createRoom(json):
 
     join_room(rid)
 
+    json["RoomID"] = rid
+
     emit("cl_enterInTheRoomAsOwner", json, to=rid, broadcast=True)
 
 
 @socketio.on("srv_joinRoom")
-def on_srv_joinRoom(json):
-    uid = auth.get_uid(json["token"])
+def on_srv_joinRoom(data):
+    uid = auth.get_uid(data["Token"])
 
+    ##Check UId
     if not uid:
-        return
+        print("incorrect token")
+        http_response = '{"error":"incorrect token"}'
+        return Response(response=http_response, mimetype="application/json")
 
     # get room
-    room = g_durak_rooms.get(json["rid"])
+    room = g_durak_rooms[str(data["RoomID"])]
     # if there is no room by rid
     if not room:
-        return
+        print("incorrect room")
+        http_response = '{"error":"incorrect room"}'
+        return Response(response=http_response, mimetype="application/json")
 
     if float(execSQL("SELECT Chips FROM Users WHERE ID = ?;", (uid,))) < room.get_bet():
-        http_response = '{"error":"Not enouth chips"}'
+        print("Not enough chips")
+        http_response = '{"error":"Not enough chips"}'
         return Response(response=http_response, mimetype="application/json")
 
     # if room is private and keys is not eq
-    if room.is_private() and room.get_key() != json["key"]:
+    if room.is_private() and room.get_key() != data["key"]:
+        print("Room is private")
         http_response = '{"error":"Room is private"}'
         return Response(response=http_response, mimetype="application/json")
 
@@ -399,6 +399,7 @@ def on_srv_joinRoom(json):
     # add player in room
     # if there is no free place or player is already in room
     if not room.join(uid, sid):
+        print("Room is not free")
         http_response = '{"error":"Room is not free"}'
         return Response(response=http_response, mimetype="application/json")
 
@@ -407,20 +408,20 @@ def on_srv_joinRoom(json):
     join_room(rid)
 
     # remove token
-    del json["token"]
+    del data["Token"]
 
     # remove key
-    del json["key"]
+    del data["key"]
+
+    data["roomOwner"] = room.get_roomOwner()
 
     # add uid
-    json["uid"] = uid
+    data["uid"] = uid
 
     # emit event
-    emit("cl_joinRoom", json, to=rid, broadcast=False)
-    emit("cl_enterInTheRoom", json, to=uid, broadcast=True)
+    emit("cl_joinRoom", data, to=rid, skip_sid=sid)
+    emit("cl_enterInTheRoom", data, to=sid)
 
-    http_response = '{"status":"Succsessed joinning to room"}'
-    return Response(response=http_response, mimetype="application/json")
 
 @socketio.on("srv_exitRoom")
 def on_srv_exitRoom(json):
@@ -430,22 +431,22 @@ def on_srv_exitRoom(json):
         return
 
     # get room
-    room = g_durak_rooms.get(json["rid"])
+    room = g_durak_rooms.get(str(json["rid"]))
         
     # if there is no room by rid
     if not room:
+        print("no room")
         return
 
     # remove player from room
     # if player is not in the room
     if not room.leave(uid):
+        print("player not in this room")
         return
 
     rid = room.get_rid()
 
     leave_room(rid)
-    # repeate for RoomServer
-    #leave_room(str(room.rid))
 
     # if room is empty
     if room.is_empty():
@@ -458,52 +459,39 @@ def on_srv_exitRoom(json):
 
     # add uid
     json["uid"] = uid
-        
-    json["bet"] = room.get_bet()
 
-    json["ncards"] = room.get_ncards()
-
-    json["gtype"] = room.get_gtype()
-
-    json["players"] = room.getNumberPlayers()
-
-    json["mxplayers"] = room.get_maxplayers()
-
-    # if room is private
-    if room.is_private():
-        # emit event
-        emit("cl_exitRoom", json, to=room.get_rid(), broadcast=True)
-    else:
-        # emit event
-        emit("cl_exitRoom", json, broadcast=True)
+    emit("cl_exitRoom", json, to=rid, broadcast=True)
 
 
 ###Get all room players###
 ###Call on enter in room to get all users in room
 #################################################
-@app.route('/get_RoomPlayers', methods=['GET'])
+@app.route('/api/get_RoomPlayers', methods=['GET'])
 def get_room_players():
-    # Получение значения параметра RoomID из URL-запроса
+
     RoomID = request.args.get('RoomID')
     
-    if room_id is None:
-        # Если параметр RoomID не был передан, возвращаем ошибку
-        response = {'error': 'RoomID parameter is missing'}
-        return jsonify(response), 400
-    
-    if room_id in room_players:
-        room = g_durak_rooms[str(RId)]
-        players = room.get_players()
-        response = {'Players': players}
-        return jsonify(response), 200
+    if RoomID in g_durak_rooms:
+        room = g_durak_rooms[str(RoomID)]
+        return room.get_players()
 
     else:
         # Если комната не найдена, возвращаем ошибку
         response = {'error': 'Room not found'}
         return jsonify(response), 404
 
-"""
+@app.route("/api/get_freeRooms", methods = ["GET"])
+def get_free_rooms( ):
+    free_rooms = []
+    for room_id, room in g_durak_rooms.items():
+        if room.is_free():
+            free_rooms.append(room_id)
 
+    return free_rooms
+
+
+"""
+ 
     WEB API
 
 """
