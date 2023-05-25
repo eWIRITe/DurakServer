@@ -20,7 +20,7 @@ from flask import send_file
 from flask_socketio import SocketIO, join_room, leave_room, send, emit, rooms
 from flask import jsonify
 import json
-
+from flask_cors import CORS
 
 
 # Can we create a thread that will clean up expired tokens every 6 hours. Every api call will refresh time of token?
@@ -76,6 +76,7 @@ app.config.from_object(__name__)
 app.config["SECRET_KEY"] = SECRET_KEY
 app.config["UPLOAD_FOLDER"] = UPLOAD_AVATAR_FOLDER
 app.config["MAX_CONTENT_LENGTH"] = 3 * 2**20 # 3Mb
+CORS(app)
 
 socketio = SocketIO(app, logger=DEBUG, engineio_logger=DEBUG)
 
@@ -361,6 +362,7 @@ def on_srv_createRoom(json):
 
     json["RoomID"] = rid
 
+    emit("cl_RoomWasCreated", json, broadcast=True)
     emit("cl_enterInTheRoomAsOwner", json, to=rid, broadcast=True)
 
 
@@ -450,7 +452,7 @@ def on_srv_exitRoom(json):
 
     # if room is empty
     if room.is_empty():
-        # remove room
+        emit("cl_RoomWasCreated", json, broadcast=True)
         del g_durak_rooms[rid]
         return
 
