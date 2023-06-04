@@ -17,9 +17,12 @@ class Card:
 
     @staticmethod
     def from_byte(byte):
-        suit = byte // Nominal.COUNT
-        nominal = byte % Nominal.COUNT
-        return Card(suit, nominal)
+        if isinstance(byte, str):
+            byte = ord(byte.encode())
+        suit = byte // Nominal.COUNT.value
+        nominal = byte % Nominal.COUNT.value
+        return Card(Suit(suit), Nominal(nominal))
+
 
     def get_suit(self):
         return self.m_suit

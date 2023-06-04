@@ -1,4 +1,5 @@
 from Deck import Deck
+from Card import Card;
 
 class Player:
     def __init__(self, uid, sid, next=None, prev=None):
@@ -84,7 +85,7 @@ class Player:
         for card in cards:
             if not self.has_card(card):
                 return False
-        
+
         return True
 
     def fold_cards(self, discardPile):
@@ -97,10 +98,13 @@ class Player:
         minTrump = None
 
         for card in self.m_cards:
-            if card.get_suit() != trump.get_suit():
-                continue
-            
-            if minTrump == None or card.get_nominal().value < minTrump.get_nominal().value:
-                minTrump = card
+            if Card.from_byte(card).get_suit() == trump.get_suit():
+                if minTrump == None:
+                    minTrump = Card.from_byte(card)
+                    print("minTrump = Card.from_byte(card)")
+                else:
+                    if Card.from_byte(card).get_nominal().value < minTrump.get_nominal().value:
+                        minTrump = Card.from_byte(card)
+                        print("minTrump = Card.from_byte(card)!!!")
 
         return minTrump

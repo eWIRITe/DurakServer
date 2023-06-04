@@ -1,13 +1,25 @@
 from enum import Enum
 
-Suit = Enum("Suit", [("HEART", 0x00), ("TILE", 0x0D), ("CLOVERS", 0x1A), ("PIKES", 0x27)])
+class Suit(Enum):
+    HEART = 0
+    TILE = 1
+    CLOVERS = 2
+    PIKES = 3
 
-Nominal = Enum("Index", [
-    ("TWO", 0x00), ("THREE", 0x01), ("FOUR", 0x02),
-    ("FIVE", 0x03), ("SIX", 0x04), ("SEVEN", 0x05),
-    ("EIGHT", 0x06), ("NINE", 0x07), ("TEN", 0x08),
-    ("JACK", 0x09), ("QUEEN", 0x0A), ("KING", 0x0B),
-    ("ACE", 0x0C), ("COUNT", 0x0D)
-])
+class Nominal(Enum):
+    TWO = 0
+    THREE = 1
+    FOUR = 2
+    FIVE = 3
+    SIX = 4
+    SEVEN = 5
+    EIGHT = 6
+    NINE = 7
+    TEN = 8
+    JACK = 9
+    QUEEN = 10
+    KING = 11
+    ACE = 12
+    COUNT = 13
 
 Status = Enum("Status", ["START", "ATTACK", "DEFENSE", "THROWIN", "FINISH"])
