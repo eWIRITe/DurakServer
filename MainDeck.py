@@ -3,22 +3,23 @@ from Deck import Deck
 from secrets import SystemRandom
 from Card import Card
 
+
 class MainDeck(Deck):
     s_secretsRandom = SystemRandom()
 
     def __init__(self, nCards):
         super().__init__()
 
-        tableMinNominal = {
-            24 : Nominal.NINE, 
-            36 : Nominal.SIX, 
-            52 : Nominal.TWO
+        table_min_nominal = {
+            24: Nominal.NINE,
+            36: Nominal.SIX,
+            52: Nominal.TWO
         }
 
-        minNominal = tableMinNominal[nCards]
-        
+        min_nominal = table_min_nominal[nCards]
+
         for nominal in Nominal:
-            if nominal.value < minNominal.value:
+            if nominal.value < min_nominal.value:
                 continue
 
             if nominal == Nominal.COUNT:
@@ -27,7 +28,9 @@ class MainDeck(Deck):
             for suit in Suit:
                 self.append(Card(suit, nominal))
 
+        print(self)
         MainDeck.s_secretsRandom.shuffle(self)
+        print(self)
 
     def get_trump(self):
         return self[0]

@@ -1,10 +1,12 @@
 from enum import Enum
 
+
 class Suit(Enum):
     HEART = 0
     TILE = 1
     CLOVERS = 2
     PIKES = 3
+
 
 class Nominal(Enum):
     TWO = 0
@@ -22,4 +24,21 @@ class Nominal(Enum):
     ACE = 12
     COUNT = 13
 
+
 Status = Enum("Status", ["START", "ATTACK", "DEFENSE", "THROWIN", "FINISH"])
+
+
+class Role(Enum):
+    notReady = -1
+    main = 0
+    firstThrower = 1
+    thrower = 2
+
+
+class status(Enum):
+    waiting = 0
+    throwing = 1
+    beating = 2
+    folding = 3
+    grabing = 4
+    passing = 5

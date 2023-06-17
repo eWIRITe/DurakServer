@@ -1,4 +1,4 @@
-from Enums import Status
+from Enums import Status, Role, status
 from Player import Player
 from MainDeck import MainDeck
 from Deck import Deck
@@ -6,8 +6,10 @@ from Battlefield import Battlefield
 
 import datetime
 
+
 class Room:
     def __init__(self, rid, json, comission=0.1):
+        self.m_started = False
         self.m_rid = rid
         self.m_isPrivate = json["isPrivate"]
         self.m_key = json["key"]
@@ -17,59 +19,40 @@ class Room:
         self.m_maxPlayers = json["maxPlayers"]
         self.m_roomOwner = json["roomOwner"]
 
-        # service comission
         self.m_comission = comission
 
-        # status of turns
         self.m_status = Status.START
 
-        # list of players who played cards
         self.m_actions = []
 
-        # seats at the table
         self.m_players = []
 
-        # list of throwers
         self.m_throwers = []
 
-        # trump card at the bottom of the game deck
         self.m_trump = None
 
-        # sorted list of players
-        # first element is left the game early, last - loser
         self.m_finished = []
 
-        # grabber's uid in current turn
         self.m_grab = None
 
-        # player who start the circle
         self.m_opensTurn = None
 
-        # player whose turn
         self.m_turn = None
 
-        # player attacker
         self.m_attacker = None
 
-        # player defender
         self.m_defender = None
 
-        # prev player turn
         self.m_prevTurn = None
 
-        # player who last finished in the prev game party
         self.m_loser = None
 
-        # common bank
         self.m_bank = 0
 
-        # main deck
         self.m_mainDeck = None
 
-        # cards played
         self.m_discardPile = None
 
-        # battlefield
         self.m_battlefield = None
 
         # to compare time
@@ -84,11 +67,19 @@ class Room:
         # callbacks
         self.m_distributionCallback = None
         self.m_grabCallback = None
-        self.m_turnCallback = None
+        self.m_giveRoles_callback = None
+        self.m_clGrabCallback = None
         self.m_foldCallback = None
+        self.m_playerFoldCallback = None
         self.m_passCallback = None
         self.m_startCallback = None
         self.m_finishCallback = None
+        self.m_throwCallback = None
+        self.m_beatCallback = None
+
+    #####################
+    ### set functions ###
+    #####################
 
     def set_distribution_callback(self, callback):
         self.m_distributionCallback = callback
@@ -96,11 +87,17 @@ class Room:
     def set_grab_callback(self, callback):
         self.m_grabCallback = callback
 
-    def set_turn_callback(self, callback):
-        self.m_turnCallback = callback
+    def set_clGrab_callback(self, callback):
+        self.m_clGrabCallback = callback
+
+    def set_giveRoles_callback(self, callback):
+        self.m_giveRoles_callback = callback
 
     def set_fold_callback(self, callback):
         self.m_foldCallback = callback
+
+    def set_playerFold_callback(self, callback):
+        self.m_playerFoldCallback = callback
 
     def set_pass_callback(self, callback):
         self.m_passCallback = callback
@@ -111,161 +108,17 @@ class Room:
     def set_finish_callback(self, callback):
         self.m_finishCallback = callback
 
+    def set_throw_callback(self, callback):
+        self.m_throwCallback = callback
+
+    def set_beat_callback(self, callback):
+        self.m_beatCallback = callback
+
     def set_ready(self):
         for player in self.m_players:
             player.ready()
 
         self.m_isStarted = True
-
-
-    def is_free(self):
-        print("isFreeCheck")
-        if(self.m_isStarted == False):
-            print("not started")
-            print(str(len(self.m_players)))
-            print(str(self.m_maxPlayers))
-            if self.m_maxPlayers > len(self.m_players):
-                print("not full")
-                return True
-        return False
-
-    def get_trump(self):
-        return
-
-    def get_roomOwner(self):
-        return self.m_roomOwner
-
-    def get_rid(self):
-        return self.m_rid
-
-    def get_key(self):
-        return self.m_key
-
-    def get_bet(self):
-        return self.m_bet
-
-    def get_ncards(self):
-        return self.m_nCards
-
-    def get_gtype(self):
-        return self.m_gType
-
-    def get_maxplayers(self):
-        return self.m_maxPlayers
-
-    def is_private(self):
-        return self.m_isPrivate
-
-    def is_started(self):
-        if(self.started):
-            return True
-        else:
-            return False
-
-    def fold_battlefield(self):
-        self.m_discardPile.transfer_from(self.m_battlefield)
-
-    def turn_is_expired(self):
-        return datetime.datetime.now() >= self.m_startTurnTimeStamp + datetime.timedelta(seconds = 31)
-
-    def get_num_playing_players(self):
-        count = 0
-
-        for player in self.m_players:
-            if player.is_playing():
-                count += 1
-
-        return count
-
-    async def end_turn(self):
-        # are there any players who finished the game
-        for player in self.m_players:
-            if not player.is_playing():
-                continue
-
-            if player.get_num_cards() == 0:
-                # player finished the game
-                player.reset_ready()
-
-        numPlayingPlayers = self.get_num_playing_players()
-
-        # the game is over?
-        # the only one player
-        if numPlayingPlayers == 1:
-            # normal game over
-            for player in self.m_players:
-                if player.is_playing():
-
-                    self.add_finished(player.get_uid())
-                    break
-
-            self.finish()
-            return
-
-        # has no playing players
-        elif numPlayingPlayers == 0:
-            # game ended in a draw
-            self.finish()
-            return
-
-
-        nextTurn = self.get_player(self.m_opensTurn).next()
-
-        # if there is a card taker
-        if self.m_grab:
-            # collect cards
-            cards = []
-            for pair in self.m_battlefield:
-                cards += pair
-
-            # take all cards
-            self.get_player(self.m_grab).take_cards(cards)
-
-            # reset grabber's uid
-            self.m_grab = None
-
-            # skip grabber's turn
-            nextTurn = nextTurn.next()
-
-        else:
-            self.m_firstTurn = False
-
-            self.m_maxBattlefield = 6
-
-        self.distrib(self.m_attacker)
-
-        # distrib the cards
-        for uid in self.m_actions:
-            self.distrib(uid)
-
-        self.distrib(self.m_defender)
-
-        self.m_actions = []
-
-        self.m_opensTurn = self.m_turn = self.m_attacker = nextTurn.get_uid()
-        self.m_defender = nextTurn.next().get_uid()
-        self.m_prevTurn = None
-
-        await self.m_turnCallback(self.get_sidOfAllPlayers(), self.m_turn)
-
-        self.m_status = Status.ATTACK
-
-        # reset bf
-        self.fold_battlefield()
-
-        self.m_throwers = self.get_list_thrower()
-
-    def has_player_card(self, uid, card):
-        player = self.get_player(uid)
-        if not player:
-            return
-
-        return player.has_card(card)
-
-    def has_player_cards(self, uid, cards):
-        for card in cards:
-            if not self.has_player_card(uid, card):
-                return False
 
     def add_finished(self, uid):
         player = self.get_player(uid)
@@ -286,51 +139,83 @@ class Room:
         player.reset_ready()
         self.m_finished.append(uid)
 
-    def can_throw_cards(self, cards):
-        nominals = []
-        for pair in self.m_battlefield:
-            for card in pair:
-                nominals.append(card.get_nominal())
+    #####################
+    ### get functions ###
+    #####################
 
-        for card in cards:
-            if not card.get_nominal() in nominals:
-                return False
+    def get_mainTurnPlayer(self):
+        for player in self.m_players:
+            if player.get_RoleValue() == 0:
+                return player
+        return None
 
-        return True
+    def get_num_playing_players(self):
+        count = 0
 
-    """
-        Returns the number of seats which is free
-    """
+        for player in self.m_players:
+            if player.is_playing():
+                count += 1
+
+        return count
+
+    def get_trump(self):
+        return self.m_trump
+
+    def get_rid(self):
+        return self.m_rid
+
+    def get_key(self):
+        return self.m_key
+
+    def get_bet(self):
+        return self.m_bet
+
+    def get_gtype(self):
+        return self.m_gType
+
+    def get_maxplayers(self):
+        return self.m_maxPlayers
+
+    def is_private(self):
+        return self.m_isPrivate
+
+    def is_started(self):
+        return self.m_isStarted
+
+    def is_free(self):
+        if not self.m_isStarted:
+            if self.m_maxPlayers > len(self.m_players):
+                return True
+
+        return False
+
+    def has_player_card(self, uid, card):
+        player = self.get_player(uid)
+        if not player:
+            return
+
+        return player.has_card(card)
+
     def get_num_empty_seats(self):
         return self.m_maxPlayers - len(self.m_players)
 
-    """
-        Returns the number of seats which is taken
-    """
     def get_num_taken_seats(self):
         return self.m_maxPlayers - self.get_num_empty_seats()
 
-    """
-        Returns True if room is full
-        or False
-    """
     def is_full(self):
         return self.get_num_empty_seats() == 0
 
-    """
-        Returns True if room is empty
-        or False
-    """
     def is_empty(self):
         return self.get_num_taken_seats() == 0
 
-    """
-        Returns Player with uid if it there
-        or None otherwise
-    """
+    def has_player_cards(self, uid, cards):
+        for card in cards:
+            if not self.has_player_card(uid, card):
+                return False
+
     def get_player(self, uid):
         for p in self.m_players:
-            if p and p.get_uid() == uid:
+            if int(p.get_uid()) == int(uid):
                 return p
 
         return None
@@ -347,468 +232,27 @@ class Room:
             players.append(sid.get_sid())
         return players
 
-    """
-        Returns the id of a free place
-    """
-    def get_first_free_place(self):
-        if self.is_full():
-            return
-
-        return self.m_players.index(None)
-
-    """
-        Returns list of thrower
-        Call this func after set m_turn, m_attacker
-    """
     def get_list_thrower(self):
+        if not self.is_started():
+            return
+
         throwers = []
-        player = self.get_player(self.m_attacker)
 
-        while True:
-            if player.get_uid() in throwers:
-                break
-
-            if (self.m_gType != 1) and len(throwers) == 3:
-                break
-
-            throwers.append(player.get_uid())
-            player = player.next()
-
-        return throwers[2:]
-
-    async def battle(self, uid, attacked, attacking):
-        player = self.get_player(uid)
-
-        if not player:
-            return False
-
-        # if player is not playing
-        if not player.is_playing():
-            return False
-
-        # if player is not active
-        if not self.m_turn == uid:
-            return False
-
-        # if player has no at least one card from attacking
-        if not player.has_cards(attacking):
-            return False
-
-        #if player is attacker
-        if self.m_status.value == Status.ATTACK.value:
-            defender = self.get_player(self.m_defender)
-
-            # if number of cards in attacking list > number of cards in defender's hands
-            if len(attacking) > defender.get_num_cards():
-                return False
-
-            # if number of attacking cards + number of cards in battlefield > max number of cards at the current turn
-            if len(attacking) + len(self.m_battlefield) > self.m_maxBattlefield:
-                return False
-
-            # if the nominal of the attacking cards is not identical
-            ideal = attacking[0].get_nominal()
-
-            for card in attacking:
-                if card.get_nominal().value != ideal.value:
-                    return False
-
-            # attack/throw in
-            for card in attacking:
-                self.m_battlefield.attack(card)
-
-                player.m_cards.remove(card)
-
-            # if player has no cards and main deck is empty
-            if len(self.m_mainDeck) == 0 and player.get_num_cards() == 0:
-                self.add_finished(uid)
-
-            # next step
-            self.m_prevTurn, self.m_turn = self.m_turn, self.m_defender
-
-            await self.m_turnCallback(self.get_sidOfAllPlayers(), self.m_turn)
-
-            self.m_status = Status.DEFENSE
-
-        # if player is defender
-        elif self.m_status.value == Status.DEFENSE.value:
-            if len(attacked) == 0:
-                return False
-
-            # if battlefield is empty
-            if len(self.m_battlefield) == 0:
-                return False
-
-            # if battlefield has no at least one card from attacked
-            if not self.m_battlefield.has_cards(attacked) or len(attacked) != self.m_battlefield.get_num_not_beaten_cards():
-                return False
-
-            # if cant beat at least one card
-            for i in range(len(attacked)):
-                if not self.m_battlefield.can_beat(attacked[i], attacking[i], self.m_trump):
-                    return False
-
-            # beat
-            for i in range(len(attacked)):
-                if not self.m_battlefield.beat(attacked[i], attacking[i]):
-                    return False
-
-                player.m_cards.remove(attacking[i])
-
-            # next step
-            self.m_turn = self.m_prevTurn
-
-            await self.m_turnCallback(self.get_sidOfAllPlayers(), self.m_turn)
-
-            self.m_status = Status.THROWIN
-
-            # if battlefield has max number of cards at the current turn or cards is run out of player's cards
-            if len(self.m_battlefield) == self.m_maxBattlefield or player.get_num_cards() == 0:
-                # if player has no cards and main deck is empty
-                if len(self.m_mainDeck) == 0 and player.get_num_cards() == 0:
-                    self.add_finished(uid)
-
-                # turn's end
-                await self.end_turn()
-
-        elif self.m_status.value == Status.THROWIN.value:
-            defender = self.get_player(self.m_defender)
-
-            # if number of cards in attacking list > number of cards in defender's hands
-            if len(attacking) > defender.get_num_cards():
-                return False
-
-            # if number of attacking cards + number of cards in battlefield > max number of cards at the current turn
-            if len(attacking) + len(self.m_battlefield) > self.m_maxBattlefield:
-                return False
-
-            # if attacking card cant throw in
-            if not self.can_throw_cards(attacking):
-                return False
-
-            # attack/throw in
-            for card in attacking:
-                self.m_battlefield.attack(card)
-
-                player.m_cards.remove(card)
-
-            self.m_actions.append(uid)
-
-            # if player has no cards and main deck is empty
-            if len(self.m_mainDeck) == 0 and player.get_num_cards() == 0:
-                self.add_finished(uid)
-
-            # next step
-            if self.m_grab:
-                if len(self.m_throwers) == 0:
-                    await self.end_turn()
-                    return True
-                else:
-                    self.m_prevTurn, self.m_turn = self.m_turn, self.m_throwers.pop(0)
-            else:
-                self.m_prevTurn, self.m_turn = self.m_turn, self.m_defender
-
-            await self.m_turnCallback(self.get_sidOfAllPlayers(), self.m_turn)
-
-            self.m_status = Status.DEFENSE
-
-        else:
-            return False
-
-        return True
-
-    async def transfer(self, uid, card):
-        # check game type
-        if self.m_gType != 2:
-            return False
-
-        if not self.m_turn == uid:
-            return False
-
-        player = self.get_player(uid)
-
-        if not player:
-            return False
-
-        # if player is not playing
-        if not player.is_playing():
-            return False
-
-        if self.m_firstTurn:
-            return False
-
-        # if player is not active
-        if not self.m_turn == uid:
-            return False
-
-        # if player is not defender
-        if uid != self.m_defender:
-            return False
-
-        # if player has no this card
-        if not self.has_player_card(uid, card):
-            return False
-
-        # if the next player runs out of cards
-        nextPlayer = self.get_player(uid).next()
-
-        if nextPlayer.get_num_cards() < len(self.m_battlefield) + 1:
-            return False
-
-        # add card to the battlefield
-        player.m_cards.remove(card)
-        self.m_battlefield.attack(card)
-
-        # if player has no cards and main deck is empty
-        if len(self.m_mainDeck) == 0 and player.get_num_cards() == 0:
-            self.add_finished(uid)
-
-        # move circle +1
-        self.m_attacker, self.m_defender = self.m_defender, player.next().get_uid()
-        self.m_prevTurn, self.m_turn = self.m_turn, self.m_defender
-        self.m_opensTurn = self.m_attacker
-
-        await self.m_turnCallback(self.get_sidOfAllPlayers(), self.m_turn)
-
-        self.m_throwers = self.get_list_thrower()
-
-        self.m_actions.append(uid)
-
-        return True
-
-    async def grab(self, uid):
-        if not self.m_turn == uid:
-            return
-
-        player = self.get_player(uid)
-
-        if not player:
-            return
-
-        # if player is not playing
-        if not player.is_playing():
-            return
-
-        # if player is not a defender
-        if uid != self.m_defender:
-            return
-
-        self.m_grab = uid
-
-        if not self.m_throwers:
-            await self.end_turn()
-            return True
-        else:
-            # then next turn is next player after thrower
-            self.m_prevTurn, self.m_turn = self.m_turn, self.m_throwers.pop(0)
-
-            # если количество карт на поле == maxBattlefield
-            if len(self.m_battlefield) == self.m_maxBattlefield:
-                await self.end_turn()
-                return True
-
-        await self.m_turnCallback(self.get_sidOfAllPlayers(), self.m_turn)
-
-        self.m_status = Status.THROWIN
-
-        return True
-
-    async def pass_(self, uid):
-        if not self.m_turn == uid:
-            return False
-
-        player = self.get_player(uid)
-
-        if not player:
-            return False
-
-        # if player is not playing
-        if not player.is_playing():
-            return False
-
-        # if this turn is first in current circle
-        if len(self.m_battlefield) == 0:
-            return False
-
-        # if uid is defender
-        if uid == self.m_defender:
-            return False
-
-        if len(self.m_throwers) == 0:
-            await self.end_turn()
-            return True
-
-        self.m_status = Status.THROWIN
-        self.m_prevTurn, self.m_turn = self.m_turn, self.m_throwers.pop(0)
-
-        await self.m_turnCallback(self.get_sidOfAllPlayers(), self.m_turn)
-
-        return True
-
-    async def fold(self, uid):
-        player = self.get_player(uid)
-
-        if not player:
-            return
-
-        if not self.m_turn == uid:
-            return
-
-        if not player.is_playing():
-            return
-
-        if len(self.m_battlefield):
-            return
-
-        player.fold_cards(self.m_discardPile)
-
-        if self.get_num_playing_players() == 1:
-            self.add_finished()
-
-        self.m_opensTurn = self.m_turn = self.m_attacker = player.next().get_uid()
-        self.m_defender = player.next().next().get_uid()
-        self.m_prevTurn = None
-
-        await self.m_turnCallback(self.get_sidOfAllPlayers(), self.m_turn)
-
-        player.reset_ready()
-
-        numPlayingPlayers = self.get_num_playing_players()
-
-        # the game is over?
-        # the only one player
-        if numPlayingPlayers == 1:
+        if len(self.m_mainDeck) == 0:
             for player in self.m_players:
-                if player.is_playing():
-                    self.add_finished(player.get_uid())
-                    break
+                if player.get_RoleValue() == 1:
+                    throwers.append(player)
 
-            self.finish()
-        # has no playing players
-        elif numPlayingPlayers == 0:
-            self.finish()
-
-        return True
-
-    """
-        Returns list of cards which needs to be takes player
-    """
-    async def distrib(self, uid):
-        cards = []
-        player = self.get_player(uid)
-
-        if not player:
-            return
-
-        if not player.is_playing() or player.get_num_cards() == 6:
-            return []
-
-        # bypass pop from empty list exception
-        countCards = min(6 - player.get_num_cards(), len(self.m_mainDeck))
-
-        cards = [self.m_mainDeck.pop().get_byte() for _ in range(0, countCards)]
-
-        player.take_cards(cards.copy())
-        await self.m_distributionCallback(cards, player.get_sid(), uid, self.m_rid)
-
-        return cards
-
-    """
-        Returns list of dicts [{sid:, cards:}]
-    """
-    async def all_distrib(self):
-        cards = []
-
-        for p in self.m_players:
-            if not p.is_playing():
-                continue
-
-            cards.append({"sid": p.get_sid(), "cards": await self.distrib(p.get_uid())})
-
-        return cards
-
-    """
-        Returns True if uid successfuly joined
-        or False if room is full or uid already in room
-    """
-    def join(self, uid, sid):
-        # if room is full or uid already in room
-        if self.is_full() or self.get_player(uid):
-            return False
-
-        self.m_players.append(Player(uid, sid))
-
-        return True
-
-    """
-        Returns True if uid successfuly removed
-        or False if room is empty or room has no uid
-    """
-    async def leave(self, uid):
-        player = self.get_player(uid)
-
-        if not player:
-            return
-
-        if player.is_playing():
-            # if room is empty or room has no uid
-            if self.is_empty() or not player:
-                # fold all player's cards
-                player.fold_cards(self.m_discardPile)
-
-            player.reset_ready()
-
-        # remove player from room
-        self.m_players.remove(player)
-
-
-    def choose_first_turn(self):
-
-        if self.m_loser and self.get_player(self.m_loser):
-            self.m_opensTurn = self.get_player(self.m_loser).prev().get_uid()
-            self.m_turn = self.m_opensTurn
-
-            print("Room: there is was a looser")
-            return self.m_opensTurn
-
-        print("Room: there is no looser")
-        minTrump = None
-
-        for player in self.m_players:
-
-            if not player.is_playing():
-                continue
-
-            minPlayersTrump = player.get_min_trump(self.m_trump)
-
-            print(minPlayersTrump)
-
-            if not minPlayersTrump:
-                print("Room: Playerd dont have an trump")
-                continue
-
-            if not minTrump:
-                minTrump = {"uid": player.get_uid(), "card": minPlayersTrump}
-
-            else:
-                print(minPlayersTrump)
-                print(minPlayersTrump.get_nominal())
-                print(minPlayersTrump.get_nominal().value)
-
-                print(minTrump["card"])
-                print(minTrump["card"].get_nominal())
-                print(minTrump["card"].get_nominal().value)
-
-                if minPlayersTrump.get_nominal().value < minTrump["card"].get_nominal().value:
-                    minTrump = {"uid": player.get_uid(), "card": minPlayersTrump}
-
-        if(minTrump == None):
-            self.m_opensTurn = self.m_players[0].get_uid()
         else:
-            self.m_opensTurn = minTrump["uid"]
+            for player in self.m_players:
+                if player.get_RoleValue() == 1 or player.get_RoleValue() == 2:
+                    throwers.append(player)
 
-        self.m_turn = self.m_opensTurn
-        return self.m_opensTurn
+        return throwers
+
+    ##########################
+    ### key points of room ###
+    ##########################
 
     def init_party(self):
         # gen main deck
@@ -823,12 +267,10 @@ class Room:
         # reset battlefield
         self.m_battlefield = Battlefield()
 
-        return self.m_trump
-
     def reset_party(self):
         # init connections with players
         for i in range(len(self.m_players)):
-            self.m_players[i].set_prev(self.m_players[i - 1])
+            self.m_players[i].set_last(self.m_players[i - 1])
             self.m_players[i - 1].set_next(self.m_players[i])
 
         # put a timestamp
@@ -861,34 +303,40 @@ class Room:
         self.m_defender = None
 
     async def start(self):
-        self.reset_party()
-        print("reset_party")
 
-        trump = self.init_party()
-        print("init party")
+        # check for enough players
+        if len(self.m_players) <= 1:
+            return False
+
+        # set DATA
+        self.set_ready()
+        self.reset_party()
+        self.init_party()
 
         await self.all_distrib()
-        print("all_distrib")
 
-        firstTurn = self.choose_first_turn()
-        print("choose_first_turn")
+        # set players roles
+        self.choose_first_turn()
 
-        self.m_turn = self.m_attacker = firstTurn
-        self.m_defender = self.get_player(firstTurn).next().get_uid()
+        first_turn = self.get_player(self.m_turn)
 
-        await self.m_turnCallback(self.get_sidOfAllPlayers(), self.m_turn)
-        print("turn callback")
+        first_turn.role = Role.main
+        first_turn.status = status.beating
+
+        first_turn.get_next().role = Role.firstThrower
+        first_turn.get_next().status = status.throwing
+
+        for player in self.m_players:
+
+            if player.get_RoleEnum() != Role.main and player.get_RoleEnum() != Role.firstThrower:
+                player.role = Role.thrower
+                player.status = status.throwing
+
+        await self.m_giveRoles_callback(self.m_players)
 
         self.m_throwers = self.get_list_thrower()
 
-        self.m_status = Status.ATTACK
-
-        players = []
-        for player in self.m_players:
-            print(player)
-            players.append(player.get_uid())
-
-        await self.m_startCallback(self.m_rid, firstTurn, trump, self.m_bet, players)
+        await self.m_startCallback(self.m_rid, self.m_trump, self.m_bet, self.get_idOfAllPlayers())
 
     async def finish(self):
         self.m_status = Status.FINISH
@@ -919,16 +367,353 @@ class Room:
 
         return win
 
+    def fold_battlefield(self):
+        self.m_discardPile.transfer_from(self.m_battlefield)
+
+    def turn_is_expired(self):
+        return datetime.datetime.now() >= self.m_startTurnTimeStamp + datetime.timedelta(seconds=31)
+
+    async def end_turn(self):
+        print("The end of turn")
+
+        main_player = self.get_mainTurnPlayer()
+
+        main_player.get_next().role = Role.main
+        main_player.get_next().status = status.beating
+
+        main_player.get_next().get_next().role = Role.firstThrower
+        main_player.get_next().get_next().status = status.throwing
+
+        for player in self.m_players:
+            if player.get_RoleEnum() != Role.main and player.get_RoleEnum() != Role.firstThrower:
+                player.role = Role.thrower
+                player.status = status.throwing
+
+        print("give roles")
+        await self.m_giveRoles_callback(self.m_players)
+
+        print("distrib all")
+        await self.all_distrib()
+
+        # are there any players who finished the game
+        for player in self.m_players:
+            if not player.is_playing():
+                continue
+
+            if player.get_num_cards() == 0:
+                # player finished the game
+                player.reset_ready()
+
+        num_playing_players = self.get_num_playing_players()
+
+        # the game is over?
+        # the only one player
+        if num_playing_players == 1:
+            # normal game over
+            for player in self.m_players:
+                if player.is_playing():
+                    self.add_finished(player.get_uid())
+                    break
+
+            await self.finish()
+            return
+
+        # has no playing players
+        elif num_playing_players == 0:
+            # game ended in a draw
+            await self.finish()
+            return
+
+        self.m_throwers = self.get_list_thrower()
+
+    def join(self, uid, sid):
+
+        if self.is_full() or self.get_player(uid):
+            return False
+
+        self.m_players.append(Player(uid, sid))
+
+        return True
+
+    async def leave(self, uid):
+        player = self.get_player(uid)
+
+        if not player:
+            return
+
+        if player.is_playing():
+            # if room is empty or room has no uid
+            if self.is_empty() or not player:
+                # fold all player's cards
+                player.fold_cards(self.m_discardPile)
+
+            player.reset_ready()
+
+        # remove player from room
+        self.m_players.remove(player)
+
+    #########################
+    ### Playing functions ###
+    #########################
+
+    async def throw(self, sid, card, UId):
+        print("\nBattlefield cards: \n" + str(self.m_battlefield))
+
+        player = self.get_player(UId)
+
+        if self.m_battlefield.get_num_not_beaten_cards() >= self.get_player(self.m_turn).get_num_cards():
+            print("Num of battlefield cards is more than main player have")
+            return
+
+        if len(self.m_battlefield) == 0:
+            print("battlefield is empty")
+            if player.get_RoleEnum() == Role.firstThrower:
+                self.m_battlefield.attack(card)
+                await self.m_throwCallback(self.get_sidOfAllPlayers(), card, UId, sid)
+
+        else:
+            print("battlefield is not empty")
+            if player.get_RoleEnum() == Role.thrower or player.get_RoleEnum() == Role.firstThrower:
+                if self.can_throw_card(card):
+                    self.m_battlefield.attack(card)
+                    await self.m_throwCallback(self.get_sidOfAllPlayers(), card, UId, sid)
+
+        print(card)
+        print(type(card))
+        print(card.get_byte())
+
+        player.m_cards.remove(card)
+
+    def can_throw_card(self, card):
+        nominals = []
+        for pair in self.m_battlefield:
+            for card in pair:
+                nominals.append(card.get_nominal())
+
+        if card.get_nominal() in nominals: return True
+
+        return False
+
+    async def battle(self, sid, uid, atackCard, atackingCard):
+        player = self.get_player(uid)
+
+        # check data
+        if not player:
+            return False
+        if not player.is_playing():
+            return False
+        if not player.has_card(atackingCard):
+            return False
+
+        if player.get_RoleEnum == Role.main:
+            self.m_battlefield.beat(atackCard, atackingCard, self.m_trump)
+
+        if len(self.m_battlefield) != 0 and atackCard.get_nominal().value == atackingCard.get_nominal().value: await self.transfer()
+
+        await self.m_beatCallback(sid, self.m_rid, uid, atackCard, atackingCard)
+
+        player.m_cards.remove(atackingCard)
+
+    async def transfer(self):
+        main_player = self.get_mainTurnPlayer()
+
+        main_player.get_next().role = Role.main
+        main_player.get_next().status = status.beating
+
+        main_player.get_next().get_next().role = Role.firstThrower
+        main_player.get_next().get_next().status = status.throwing
+
+        for player in self.m_players:
+            if player.get_RoleEnum() != Role.main and player.get_RoleEnum() != Role.firstThrower:
+                player.role = Role.thrower
+                player.status = status.throwing
+
+        await self.m_giveRoles_callback(self.m_players)
+
+        self.m_throwers = self.get_list_thrower()
+
+        return True
+
+    ###################################
+
+    async def cl_grab(self, uid):
+        if self.get_player(uid).get_RoleEnum() == Role.main:
+            print("The client: " + str(uid) + " is ready to grab")
+            self.get_mainTurnPlayer().status = status.grabing
+
+            await self.m_clGrabCallback(self.m_rid)
+
+    async def grab(self):
+        player = self.get_mainTurnPlayer()
+
+        # check data
+        if not player:
+            print("no player")
+            return False
+        if not player.is_playing():
+            print("player is not playing")
+            return False
+        if len(self.m_battlefield) == 0:
+            print("Battlefield is null")
+            return False
+
+        # collect cards
+        cards = []
+        for pair in self.m_battlefield:
+            for card in pair:
+                cards.append(card)
+
+        print(cards)
+
+        self.fold_battlefield()
+
+        print("Card: \n " + str(cards) + "\n")
+
+        player.take_cards(cards)
+
+        print("Player cards: \n" + str(player.get_cards()) + "\n")
+
+        await self.m_grabCallback(self.m_rid)
+
+        await self.end_turn()
+
+    async def cl_fold(self, uid):
+        player = self.get_player(uid)
+
+        # checking
+        if not player:
+            print("dont found player")
+            return
+        if not player.is_playing():
+            print("player is not playing")
+            return
+        if player.get_RoleEnum == Role.main:
+            print("Player: " + uid + ", role is: " + player.get_RoleEnum)
+            return
+
+        print("there is no cards in the battlefield: " + str(len(self.m_battlefield)))
+        print("\nBattlefield:\n" + str(self.m_battlefield))
+
+        if player.status != status.folding: player.status = status.folding
+
+        await self.m_playerFoldCallback(self.m_rid, uid)
+
+        for thrower in self.get_list_thrower():
+            if thrower.status != status.folding:
+                return
+
+        await self.fold()
+
+    async def fold(self):
+
+        if self.m_gType == 1 and len(self.m_players) > 3:
+            await self.transfer()
+            return
+
+        self.fold_battlefield()
+
+        await self.m_foldCallback(self.m_rid)
+
+        await self.end_turn()
+
+    async def cl_pass(self, uid):
+        if self.get_mainTurnPlayer().status != status.grabing:
+            return
+
+        if self.get_player(uid).status == status.throwing:
+            self.get_player(uid).status = status.passing
+            await self.m_passCallback(self.m_rid, uid)
+
+        for thrower in self.get_list_thrower():
+            if thrower.status != status.passing:
+                return
+
+        print("grabbing")
+        await self.grab()
+
+    #################################
+
+    async def distrib(self, uid):
+        player = self.get_player(uid)
+
+        if not player:
+            print("User: " + uid + ", is not exist")
+            return
+
+        if not player.is_playing() or player.get_num_cards() >= 6:
+            print("User: " + uid + " - \n")
+            print(player.get_num_cards())
+            print("Player cards: \n" + str(player.get_cards()))
+
+            return []
+
+        # bypass pop from empty list exception
+        count_cards = min(6 - player.get_num_cards(), len(self.m_mainDeck))
+
+        cards = []
+        for i in range(count_cards):
+            cards.append(self.m_mainDeck.pop())
+
+        player.take_cards(cards.copy())
+        await self.m_distributionCallback(cards, player.get_sid(), uid, self.m_rid)
+
+        return cards
+
+    async def all_distrib(self):
+        for p in self.m_players:
+            if not p.is_playing():
+                continue
+
+            await self.distrib(p.get_uid())
+
+    def choose_first_turn(self):
+
+        # if there is a loser
+        if self.m_loser and self.get_player(self.m_loser):
+            self.m_turn = self.get_player(self.m_loser)
+
+            return self.m_turn
+
+        # get user with min trump
+        minTrump = None
+
+        for player in self.m_players:
+
+            if not player.is_playing():
+                continue
+
+            minPlayersTrump = player.get_min_trump(self.m_trump)
+
+            if not minPlayersTrump:
+                continue
+
+            if not minTrump:
+                minTrump = {"uid": player.get_uid(), "card": minPlayersTrump}
+
+            else:
+                if minPlayersTrump.get_nominal().value < minTrump["card"].get_nominal().value:
+                    minTrump = {"uid": player.get_uid(), "card": minPlayersTrump}
+
+        # return ID of first player 
+        if (minTrump == None):
+            self.m_turn = self.m_players[0].get_uid()
+        else:
+            self.m_turn = minTrump["uid"]
+
+        return self.m_turn
+
     async def whatsup(self):
         if not self.turn_is_expired():
             return
 
+        """
         if self.m_turn == self.m_attacker:
             await self.fold()
             await self.m_foldCallback(self.m_rid, self.m_turn)
         elif self.m_turn == self.m_defender:
-            self.grab()
+            await self.grab()
             await self.m_grabCallback(self.m_rid, self.m_turn)
         else:
-            self.pass_()
+            await self.pass_()
             await self.m_passCallback(self.m_rid, self.m_turn)
+        """

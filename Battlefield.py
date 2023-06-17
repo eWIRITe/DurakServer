@@ -1,3 +1,4 @@
+
 class Battlefield(list):
     def has_card(self, card):
         return [card] in self
@@ -17,18 +18,16 @@ class Battlefield(list):
 
         return count
 
-    def can_beat(self, attackedCard, attackingCard, trump):
-        # if attackingCard can beat attackedCard
-        return attackedCard.get_suit().value == attackingCard.get_suit().value and \
-                attackedCard.get_nominal().value < attackingCard.get_nominal().value or \
-                attackedCard.get_suit().value != trump.get_suit().value and \
-                attackingCard.get_suit().value == trump.get_suit().value
-
-    def beat(self, attackedCard, attackingCard):
+    def beat(self, attackedCard, attackingCard, trump):
         slot = self.index([attackedCard])
-        self[slot] = [attackedCard, attackingCard]
+        if can_beat(attackedCard, attackingCard, trump): self[slot] = [attackedCard, attackingCard]
 
         return True
 
     def attack(self, card):
         self.append([card])
+
+
+def can_beat(attackedCard, attackingCard, trump):
+    # if attackingCard can beat attackedCard
+    return attackedCard.get_suit().value == attackingCard.get_suit().value and attackedCard.get_nominal().value < attackingCard.get_nominal().value or attackedCard.get_suit().value != trump.get_suit().value and attackingCard.get_suit().value == trump.get_suit().value

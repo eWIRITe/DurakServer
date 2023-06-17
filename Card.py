@@ -1,5 +1,6 @@
 from Enums import Nominal, Suit
 
+
 class Card:
     s_humanSuits = ["♥", "♦", "♣", "♠"]
     s_humanNominals = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "В", "Д", "К", "Т"]
@@ -23,7 +24,6 @@ class Card:
         nominal = byte % Nominal.COUNT.value
         return Card(Suit(suit), Nominal(nominal))
 
-
     def get_suit(self):
         return self.m_suit
 
@@ -31,6 +31,8 @@ class Card:
         return self.m_nominal
 
     def get_byte(self):
+        print(self.m_byte)
+        print(chr(self.m_byte))
         return chr(self.m_byte)
 
     """
@@ -38,6 +40,7 @@ class Card:
         If attacking card can beat self card then attacking card cant beat self card
         Use it if you want to check other card
     """
+
     def can_card_beat(self, attacking, trump):
         if attacking.get_suit() == trump.get_suit():
             if self.get_suit() == trump.get_suit():
@@ -48,15 +51,16 @@ class Card:
         return attacking.get_suit() == self.get_suit() and \
             attacking.get_nominal() > self.get_nominal()
 
+
     def __eq__(self, other):
         return other and self.get_suit() == other.get_suit() and \
             self.get_nominal() == other.get_nominal()
 
     def __str__(self):
         nominalIndex = self.get_nominal().value
-        suitIndex = self.get_suit().value // Nominal.COUNT.value
+        suitIndex = self.get_suit().value
         return "{0} {1}".format(Card.s_humanNominals[nominalIndex], Card.s_humanSuits[suitIndex])
 
     def __repr__(self):
-        #return str(self) + " ({0})".format(hex(id(self)))
+        # return str(self) + " ({0})".format(hex(id(self)))
         return str(self)
