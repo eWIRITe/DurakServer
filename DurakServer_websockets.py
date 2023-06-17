@@ -518,6 +518,12 @@ class GetFunctions:
         for sid in room.get_sidOfAllPlayers():
             await sid.send(json.dumps(message))
 
+    @staticmethod
+    async def getStatistick(sid):
+        print("vfdsvs")
+    @staticmethod
+    async def getPlayerFinisherGames(sid):
+        print("vfdsvs")
 
 class PlayingMetods:
     @staticmethod
