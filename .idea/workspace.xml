@@ -7,6 +7,8 @@
     <list default="true" id="7d593e14-11d9-4ef8-a1b4-d48ffd7b2928" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/DurakServer_websockets.py" beforeDir="false" afterPath="$PROJECT_DIR$/DurakServer_websockets.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/avatars/StandartPhoto.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/durak.db" beforeDir="false" afterPath="$PROJECT_DIR$/durak.db" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

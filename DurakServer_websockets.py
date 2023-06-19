@@ -519,11 +519,53 @@ class GetFunctions:
             await sid.send(json.dumps(message))
 
     @staticmethod
-    async def getStatistick(sid):
-        print("vfdsvs")
+    async def get_gamesStat(sid, token):
+        games = DataBase.execSQL('SELECT Total FROM Users WHERE ID = ?;', (auth.get_uid(token),))
+
+        data = {
+            "games": games
+        }
+
+        message = {
+            "eventType": "gameStats",
+            "data": json.dumps(data)
+        }
+
+        await sid.send(json.dumps(message))
+
     @staticmethod
-    async def getPlayerFinisherGames(sid):
-        print("vfdsvs")
+    async def getRaiting(sid, data):
+        limit = 100
+        if '["limit"]' in data: limit = data["limit"]
+
+        rows = DataBase.execSQL("SELECT ID, Name, Won, Total FROM Users LIMIT ?;", (limit, ))
+
+        # Create a list of objects
+        objects_list = []
+        for row in rows:
+            ID = row[0]
+            Name = row[1]
+            Win = row[2]
+            Total = row[3]
+
+            # Calculate the won_rate
+            if Total > 0:
+                won_rate = Win / Total
+            else:
+                won_rate = 0.0
+
+            # Create the object and add it to the list
+            obj = {'ID': ID, 'Name': Name, 'win_rate': won_rate, 'total': Total}
+            objects_list.append(obj)
+
+        message = {
+            "eventType": "got_rating",
+            "data": json.dumps(objects_list)
+        }
+
+        print(message)
+        await sid.send(json.dumps(message))
+
 
 class PlayingMetods:
     @staticmethod
@@ -763,9 +805,17 @@ class UserEntering:
     async def get_avatar(sid, user_id):
         # Check if the avatar file exists for the given UserID
         avatar_filename = os.path.join(UPLOAD_AVATAR_FOLDER, str(user_id) + '.png')
+
         if os.path.exists(avatar_filename):
             with open(avatar_filename, 'rb') as f:
                 # Read the image file and encode it as base64
+                image_data = f.read()
+                base64_image = base64.b64encode(image_data).decode('utf-8')
+
+            await GameFunctions.cl_sendImage(user_id, sid, base64_image)
+        else:
+            # Avatar file not found, send the default image
+            with open(os.path.join(UPLOAD_AVATAR_FOLDER, "default" + '.png'), 'rb') as f:
                 image_data = f.read()
                 base64_image = base64.b64encode(image_data).decode('utf-8')
 
@@ -897,6 +947,12 @@ async def ws_handle(websocket, path):
 
                 elif action == "getAvatar":
                     await UserEntering.get_avatar(sid, data["UserID"])
+
+                elif action == "get_gamesStat":
+                    await GetFunctions.get_gamesStat(sid, data["token"])
+
+                elif action == "get_raiting":
+                    await GetFunctions.getRaiting(sid, data)
 
                 ### admin metods ###
 
