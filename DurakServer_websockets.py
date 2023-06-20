@@ -848,6 +848,23 @@ class UserEntering:
             if DEBUG: print("user: " + name + ", tryed register again")
         return
 
+    @staticmethod
+    async def send_chat_message(RoomID, message, UserID):
+        room = g_durak_rooms[str(RoomID)]
+
+        data = {
+            "UserID": UserID,
+            "message": message
+        }
+
+        message = {
+            "eventType": "chat_message",
+            "data": json.dumps(data)
+        }
+
+        for sid in room.get_sidOfAllPlayers():
+            await sid.send(json.dumps(message))
+
 
 ############################
 ###input requests handler###
@@ -899,6 +916,9 @@ async def ws_handle(websocket, path):
                     await PlayingMetods.Fold(auth.get_uid(data["token"]), data["RoomID"])
 
                 ### room functions ###
+
+                elif action == "send_message":
+                    await UserEntering.send_chat_message(data["RoomID"], data["message"], auth.get_uid(data["token"]))
 
                 elif action == "srv_createRoom":
                     await UserEntering.createRoom(data["token"], auth.get_uid(data["token"]), data, sid)
