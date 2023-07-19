@@ -4,7 +4,8 @@ from Enums import Role, status
 
 
 class Player:
-    def __init__(self, uid, sid, role=Role.notReady, status = status.waiting, nextPlayer=None, lastPlayer=None):
+    def __init__(self, uid, sid, role=Role.notReady, status=status.waiting, nextPlayer=None, lastPlayer=None):
+        self.roomID = None
         self.m_uid = uid
         self.m_sid = sid
         self.m_ready = False
@@ -29,6 +30,9 @@ class Player:
 
     def get_last(self):
         return self.lastPlayer
+
+    def joinRoom(self, roomID):
+        self.roomID = roomID
 
     #####################
     ### get functions ###
@@ -84,6 +88,12 @@ class Player:
                         minTrump = card
 
         return minTrump
+
+    def get_player_room_id(self):
+        if self.roomID is not None:
+            return self.roomID
+        else:
+            return 0
 
     #####################
     ### set functions ###

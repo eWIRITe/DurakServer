@@ -443,7 +443,16 @@ class GameFunctions:
             "data": json.dumps(data)
         }
 
-        print(message)
+        await sid.send(json.dumps(message))
+
+    @staticmethod
+    async def cl_start_game_along(sid):
+
+        message = {
+            "eventType": "cl_startGameAlong",
+            "data": "NoNData"
+        }
+
         await sid.send(json.dumps(message))
 
 
@@ -538,7 +547,7 @@ class GetFunctions:
         limit = 100
         if '["limit"]' in data: limit = data["limit"]
 
-        rows = DataBase.execSQL("SELECT ID, Name, Won, Total FROM Users LIMIT ?;", (limit, ))
+        rows = DataBase.execSQL("SELECT ID, Name, Won, Total FROM Users LIMIT ?;", (limit,))
 
         # Create a list of objects
         objects_list = []
@@ -609,10 +618,10 @@ class PlayingMetods:
             print("A user got a mistake: incorrect Room (battle function), his RoomID was: " + RoomID)
             return
 
-        attacked = Card(TransleteCardData.transform_suit(data["attacedCard"]["suit"]),
-                        TransleteCardData.transform_nominal(data["attacedCard"]["nominal"]))
-        attacking = Card(TransleteCardData.transform_suit(data["attacingCard"]["suit"]),
-                         TransleteCardData.transform_nominal(data["attacingCard"]["nominal"]))
+        attacked = Card(TransleteCardData.transform_suit(data["attakedCard"]["suit"]),
+                        TransleteCardData.transform_nominal(data["attakedCard"]["nominal"]))
+        attacking = Card(TransleteCardData.transform_suit(data["attakingCard"]["suit"]),
+                         TransleteCardData.transform_nominal(data["attakingCard"]["nominal"]))
 
         await room.battle(sid, UserID, attacked, attacking)
 
@@ -697,6 +706,7 @@ class UserEntering:
         room.set_start_callback(GameFunctions.cl_start)
         room.set_finish_callback(GameFunctions.cl_finish)
         room.set_beat_callback(GameFunctions.cl_beat)
+        room.set_start_alone_callback(GameFunctions.cl_start_game_along)
 
         # Add room in the list
         g_durak_rooms[RoomID] = room
@@ -709,6 +719,9 @@ class UserEntering:
             await sid.send(json.dumps({"eventType": "error", "data": "Room is not free or there is an error"}))
         else:
             if DEBUG: print("User: " + UserID + ", entered the room: " + RoomID)
+
+            print(data)
+
             await sid.send(json.dumps({"eventType": "cl_enterInTheRoomAsOwner", "data": f"{data}"}))
 
         await GetFunctions.getFreeRooms()
@@ -740,12 +753,13 @@ class UserEntering:
         data["RoomID"] = str(data["RoomID"])
         data["roomOwner"] = room.m_roomOwner
         data["type"] = room.get_gtype()
+        data["bet"] = room.m_bet
 
         if DEBUG: print("User: " + UserID + ", enter in the room: " + RoomID)
         await sid.send(json.dumps({"eventType": "cl_enterInTheRoom", "data": f"{data}"}))
 
         for _sid in room.get_sidOfAllPlayers():
-            if _sid != sid: await _sid.send(json.dumps({"eventType": "cl_joinRoom", "data": f"{data}"}))
+            if _sid != sid: await _sid.send(json.dumps({"eventType": "cl_joinRoom", "data": json.dumps({"playerID": UserID})}))
 
     @staticmethod
     async def exitRoom(sid, RoomID, UserID):
@@ -778,7 +792,7 @@ class UserEntering:
         if UserID and UserID >= 0:
             if DEBUG: print("User: " + name + ", sucsessedLogin")
             await sid.send(
-                json.dumps({"eventType": "sucsessedLogin", "data": "{'token': '%s'}" % (auth.new_token(UserID),)}))
+                json.dumps({"eventType": "sucsessedLogin", "data": "{'token': '%s', 'name': '%s'}" % (auth.new_token(UserID), name)}))
         else:
             await sid.send(json.dumps({"eventType": "error", "data": "incorrect token"}))
 
@@ -798,8 +812,6 @@ class UserEntering:
         avatar_filename = os.path.join(UPLOAD_AVATAR_FOLDER, str(user_id) + '.png')
         with open(avatar_filename, 'wb') as f:
             f.write(image_data)
-
-        print('Avatar saved:', avatar_filename)
 
     @staticmethod
     async def get_avatar(sid, user_id):
@@ -936,10 +948,10 @@ async def ws_handle(websocket, path):
 
                 ### enter functions ###
 
-                elif action == "Login":
+                elif action == "Emit_login":
                     await UserEntering.login(sid, data)
 
-                elif action == "Signin":
+                elif action == "Emit_signIn":
                     await UserEntering.register_user(sid, data)
 
                 elif action == "logout":
@@ -986,7 +998,10 @@ async def ws_handle(websocket, path):
                 await sid.send(json.dumps({"eventType": "error", "data": "Unknown action"}))
 
     except Exception as e:
-        print(f"WS Error: {e}")
+        print(f"WS Error: {e, e.args}")
+
+    print("User: " + str(websocket) + " - is disconnected")
+    connections.remove(sid)
 
 
 def validRoomJSON(json):
@@ -1013,7 +1028,7 @@ def validRoomJSON(json):
 
 
 if __name__ == "__main__":
-    start_server = serve(ws_handle, "127.0.0.1", 5000)
+    start_server = serve(ws_handle, "localhost", 9954)
     print("//////////// Server opened \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\")
     asyncio.get_event_loop().run_until_complete(start_server)
     asyncio.get_event_loop().run_forever()

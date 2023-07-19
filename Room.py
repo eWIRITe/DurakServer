@@ -76,6 +76,7 @@ class Room:
         self.m_finishCallback = None
         self.m_throwCallback = None
         self.m_beatCallback = None
+        self.m_startAlone = None
 
     #####################
     ### set functions ###
@@ -113,6 +114,9 @@ class Room:
 
     def set_beat_callback(self, callback):
         self.m_beatCallback = callback
+
+    def set_start_alone_callback(self, callback):
+        self.m_startAlone = callback
 
     def set_ready(self):
         for player in self.m_players:
@@ -306,7 +310,11 @@ class Room:
 
         # check for enough players
         if len(self.m_players) <= 1:
-            return False
+            await self.m_startAlone(self.m_players[0].get_sid())
+
+            self.m_isStarted = True
+
+            return None
 
         # set DATA
         self.set_ready()
@@ -327,7 +335,7 @@ class Room:
         first_turn.get_next().status = status.throwing
 
         for player in self.m_players:
-
+            player.roomID = self.m_rid
             if player.get_RoleEnum() != Role.main and player.get_RoleEnum() != Role.firstThrower:
                 player.role = Role.thrower
                 player.status = status.throwing

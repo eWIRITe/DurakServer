@@ -28,9 +28,7 @@ class MainDeck(Deck):
             for suit in Suit:
                 self.append(Card(suit, nominal))
 
-        print(self)
         MainDeck.s_secretsRandom.shuffle(self)
-        print(self)
 
     def get_trump(self):
         return self[0]
