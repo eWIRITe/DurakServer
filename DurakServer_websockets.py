@@ -712,6 +712,7 @@ class UserEntering:
         g_durak_rooms[RoomID] = room
 
         data["RoomID"] = RoomID
+        data["roomOwner"] = UserID
 
         # Join user
         if not room.join(UserID, sid):
@@ -792,7 +793,7 @@ class UserEntering:
         if UserID and UserID >= 0:
             if DEBUG: print("User: " + name + ", sucsessedLogin")
             await sid.send(
-                json.dumps({"eventType": "sucsessedLogin", "data": "{'token': '%s', 'name': '%s'}" % (auth.new_token(UserID), name)}))
+                json.dumps({"eventType": "sucsessedLogin", "data": "{'token': '%s', 'name': '%s', 'UserID': '%s'}" % (auth.new_token(UserID), name, UserID)}))
         else:
             await sid.send(json.dumps({"eventType": "error", "data": "incorrect token"}))
 
@@ -1028,7 +1029,7 @@ def validRoomJSON(json):
 
 
 if __name__ == "__main__":
-    start_server = serve(ws_handle, "localhost", 9954)
+    start_server = serve(ws_handle, "127.0.0.1", 9954)
     print("//////////// Server opened \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\")
     asyncio.get_event_loop().run_until_complete(start_server)
     asyncio.get_event_loop().run_forever()
