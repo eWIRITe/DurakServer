@@ -798,6 +798,29 @@ class UserEntering:
             await sid.send(json.dumps({"eventType": "error", "data": "incorrect token"}))
 
     @staticmethod
+    async  def changeEmail(sid, token, old_email, new_email):
+        UserID = auth.get_uid(token)
+
+        if UserID:
+            if new_email != old_email:
+                current_email = DataBase.execSQL('SELECT Email FROM Users WHERE ID=?;', (UserID,))
+
+                # if user has no email
+                if not current_email:
+                    current_email = ""
+
+                print("User: " + str(UserID) + ", want to change email: " + current_email)
+                if current_email == old_email:
+                    DataBase.execSQL('UPDATE Users SET Email=? WHERE ID=?;', (new_email, UserID))
+                    await sid.send(json.dumps({"eventType": "Sucsessed_emailChange", "data": json.dumps({"newEmail": new_email})}))
+                else:
+                    await sid.send(json.dumps({"eventType": "error", "data": "Old email address not found"}))
+            else:
+                await sid.send(json.dumps({"eventType": "error", "data": "Email addresses are equal"}))
+        else:
+            await sid.send(json.dumps({"eventType": "error", "data": "Api token is incorrect"}))
+
+    @staticmethod
     async def save_avatar(data):
         user_id = data['UserID']
         avatar_image = data['avatarImage']
@@ -954,6 +977,9 @@ async def ws_handle(websocket, path):
 
                 elif action == "Emit_signIn":
                     await UserEntering.register_user(sid, data)
+
+                elif action == "Emit_changeEmail":
+                    await UserEntering.changeEmail(sid, data["token"], data["old_email"], data["new_email"])
 
                 elif action == "logout":
                     pass
