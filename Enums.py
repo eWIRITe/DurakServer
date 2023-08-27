@@ -36,9 +36,11 @@ class Role(Enum):
 
 
 class status(Enum):
+    loosed = -2
+    won = -1
     waiting = 0
     throwing = 1
     beating = 2
     folding = 3
-    grabing = 4
+    grabbing = 4
     passing = 5

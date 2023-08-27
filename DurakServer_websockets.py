@@ -154,38 +154,28 @@ class TransleteCardData:
 
 class AdminMetods:
     @staticmethod
-    async def admin_getChips(UserID, newChips):
-        # if you need to give admin rights from database, and check it
-        """
-        if UserID:
-            admin_rang = float(DataBase.execSQL('SELECT isAdmin FROM Users WHERE ID=?;', (UserID,)))
+    async def admin_getChips(token, newChips, sid):
+        uid = auth.get_uid(token)
 
-            if admin_rang == 1:
-                old_chips = DataBase.execSQL('SELECT Chips FROM Users WHERE ID = ?;', (UserID,))
+        if uid:
+            old_chips = DataBase.execSQL('SELECT Chips FROM Users WHERE ID = ?;', (uid,))
 
-                DataBase.execSQL('UPDATE Users SET Chips=? WHERE ID=?;', (int(old_chips) + int(newChips), UserID))
+            DataBase.execSQL('UPDATE Users SET Chips=? WHERE ID=?;', (int(old_chips) + int(newChips), uid))
 
-                print("admin get chips: " + str(UserID) + " - " + str(int(old_chips) + int(newChips)))
+            print("admin get chips: " + str(uid) + " - " + str(int(old_chips) + int(newChips)))
 
-                return str(int(old_chips) + int(newChips))
-
-            else:
-                print("some one trying to cheat!!!! -- " + str(UserID))
+            message = {
+                "eventType": "admin_getChips",
+                "data": "ok"
+            }
 
         else:
-            return "error: Api token is incorrect"
+            message = {
+                "eventType": "login",
+                "data": "incorrect token"
+            }
 
-        """
-
-        # if you dont need to make any check, so new admin could just get admin program edition
-
-        old_chips = DataBase.execSQL('SELECT Chips FROM Users WHERE ID = ?;', (UserID,))
-
-        DataBase.execSQL('UPDATE Users SET Chips=? WHERE ID=?;', (int(old_chips) + int(newChips), UserID))
-
-        print("admin get chips: " + str(UserID) + " - " + str(int(old_chips) + int(newChips)))
-
-        return str(int(old_chips) + int(newChips))
+        await sid.send(json.dumps(message))
 
 
 class GameFunctions:
@@ -301,11 +291,29 @@ class GameFunctions:
 
         message = {
             "eventType": "cl_pass",
-            "data": data
+            "data": json.dumps(data)
         }
 
         for sid in room.get_sidOfAllPlayers():
             print(message)
+            await sid.send(json.dumps(message))
+
+    @staticmethod
+    async def cl_trumpIsDone(room):
+        message = {
+            "eventType": "trumpIsDone",
+            "data": "NoNData"
+        }
+        for sid in room.get_sidOfAllPlayers():
+            await sid.send(json.dumps(message))
+
+    @staticmethod
+    async def cl_colodaIsEmpty(room):
+        message = {
+            "eventType": "colodaIsEmpty",
+            "data": "NoNData"
+        }
+        for sid in room.get_sidOfAllPlayers():
             await sid.send(json.dumps(message))
 
     @staticmethod
@@ -482,7 +490,20 @@ class GetFunctions:
     @staticmethod
     async def get_UId(token, sid):
         UserID = auth.get_uid(token)
-        await sid.send(json.dumps({"eventType": "cl_getId", "data": f"{UserID}"}))
+
+        if UserID:
+            message = {
+                "eventType": "cl_getId",
+                "data": UserID
+            }
+
+        else:
+            message = {
+                "eventType": "error",
+                "data": "incorrect token"
+            }
+
+        await sid.send(json.dumps(message))
 
     @staticmethod
     async def get_username(token, sid):
@@ -670,6 +691,22 @@ class PlayingMetods:
 
 
 class UserEntering:
+
+    @staticmethod
+    async def playerWon(room, player):
+
+        chips = DataBase.execSQL('SELECT Chips FROM Users WHERE ID = ?;', (player.get_uid(),))
+        winners_data = {
+            "chips": chips
+        }
+        players_data = {
+            "UserID": player.get_uid()
+        }
+        for sid in room.get_sidOfAllPlayers():
+            await sid.send(json.dumps({"eventType": "playerWon", "data": json.dumps(players_data)}))
+
+        await player.get_sid().send(json.dumps({"eventType": "won", "data": json.dumps(winners_data)}))
+
     @staticmethod
     async def createRoom(token, UserID, data, sid):
         if not UserID:
@@ -695,18 +732,22 @@ class UserEntering:
         # Create room
         room = Room(RoomID, data, commission)
 
-        room.set_distribution_callback(GameFunctions.cl_distribution)
-        room.set_grab_callback(GameFunctions.cl_grab)
-        room.set_clGrab_callback(GameFunctions.cl_sendGrab)
-        room.set_giveRoles_callback(GameFunctions.cl_sendRoles)
-        room.set_throw_callback(GameFunctions.cl_throw)
-        room.set_fold_callback(GameFunctions.cl_Fold)
-        room.set_playerFold_callback(GameFunctions.cl_sendFold)
-        room.set_pass_callback(GameFunctions.cl_pass)
-        room.set_start_callback(GameFunctions.cl_start)
-        room.set_finish_callback(GameFunctions.cl_finish)
-        room.set_beat_callback(GameFunctions.cl_beat)
-        room.set_start_alone_callback(GameFunctions.cl_start_game_along)
+        room.m_distributionCallback = GameFunctions.cl_distribution
+        room.m_grabCallback = GameFunctions.cl_grab
+        room.m_giveRoles_callback = GameFunctions.cl_sendRoles
+        room.m_clGrabCallback = GameFunctions.cl_sendGrab
+        room.m_foldCallback = GameFunctions.cl_Fold
+        room.m_playerFoldCallback = GameFunctions.cl_sendFold
+        room.m_passCallback = GameFunctions.cl_pass
+        room.m_startCallback = GameFunctions.cl_start
+        room.m_finishCallback = GameFunctions.cl_finish
+        room.m_throwCallback = GameFunctions.cl_throw
+        room.m_beatCallback = GameFunctions.cl_beat
+        room.m_startAlone = GameFunctions.cl_start_game_along
+        room.m_writeOffChips = UserEntering.write_off_chips
+        room.m_playerWon = UserEntering.playerWon
+        room.m_trumpIsDone = GameFunctions.cl_trumpIsDone
+        room.m_deckIsEmpty = GameFunctions.cl_colodaIsEmpty
 
         # Add room in the list
         g_durak_rooms[RoomID] = room
@@ -795,10 +836,15 @@ class UserEntering:
             await sid.send(
                 json.dumps({"eventType": "sucsessedLogin", "data": "{'token': '%s', 'name': '%s', 'UserID': '%s'}" % (auth.new_token(UserID), name, UserID)}))
         else:
-            await sid.send(json.dumps({"eventType": "error", "data": "incorrect token"}))
+            await sid.send(json.dumps({"eventType": "error", "data": "the entered data is incorrect"}))
 
     @staticmethod
-    async  def changeEmail(sid, token, old_email, new_email):
+    async def write_off_chips(player, chips_to_write_off):
+        if player:
+            DataBase.execSQL('UPDATE Users SET Chips+=? WHERE ID=?;', (chips_to_write_off, player.get_uid()))
+
+    @staticmethod
+    async def changeEmail(sid, token, old_email, new_email):
         UserID = auth.get_uid(token)
 
         if UserID:
@@ -1014,9 +1060,8 @@ async def ws_handle(websocket, path):
                     await GetFunctions.getRaiting(sid, data)
 
                 ### admin metods ###
-
                 elif action == "admin_getChips":
-                    await AdminMetods.admin_getChips(auth.get_uid(data["token"]), data["chips"])
+                    await AdminMetods.admin_getChips(data["token"], data["chips"], sid)
 
                 ### on unknown action ###
                 else:
@@ -1055,7 +1100,13 @@ def validRoomJSON(json):
 
 
 if __name__ == "__main__":
+    loop = asyncio.get_event_loop()  # Create an event loop
     start_server = serve(ws_handle, "127.0.0.1", 9954)
     print("//////////// Server opened \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\")
-    asyncio.get_event_loop().run_until_complete(start_server)
-    asyncio.get_event_loop().run_forever()
+    try:
+        loop.run_until_complete(start_server)
+        loop.run_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        loop.close()

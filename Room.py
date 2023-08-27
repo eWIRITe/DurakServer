@@ -77,71 +77,20 @@ class Room:
         self.m_throwCallback = None
         self.m_beatCallback = None
         self.m_startAlone = None
+        self.m_writeOffChips = None
+        self.m_playerWon = None
+        self.m_trumpIsDone = None
+        self.m_deckIsEmpty = None
 
     #####################
     ### set functions ###
     #####################
-
-    def set_distribution_callback(self, callback):
-        self.m_distributionCallback = callback
-
-    def set_grab_callback(self, callback):
-        self.m_grabCallback = callback
-
-    def set_clGrab_callback(self, callback):
-        self.m_clGrabCallback = callback
-
-    def set_giveRoles_callback(self, callback):
-        self.m_giveRoles_callback = callback
-
-    def set_fold_callback(self, callback):
-        self.m_foldCallback = callback
-
-    def set_playerFold_callback(self, callback):
-        self.m_playerFoldCallback = callback
-
-    def set_pass_callback(self, callback):
-        self.m_passCallback = callback
-
-    def set_start_callback(self, callback):
-        self.m_startCallback = callback
-
-    def set_finish_callback(self, callback):
-        self.m_finishCallback = callback
-
-    def set_throw_callback(self, callback):
-        self.m_throwCallback = callback
-
-    def set_beat_callback(self, callback):
-        self.m_beatCallback = callback
-
-    def set_start_alone_callback(self, callback):
-        self.m_startAlone = callback
 
     def set_ready(self):
         for player in self.m_players:
             player.ready()
 
         self.m_isStarted = True
-
-    def add_finished(self, uid):
-        player = self.get_player(uid)
-
-        if not player:
-            print("Warning: There is an attempt to add finished as a non-existent player")
-            return
-
-        self.m_finished.append(uid)
-
-    def add_loser(self, uid):
-        player = self.get_player(uid)
-
-        if not player:
-            print("Warning: There is an attempt to add loser as a non-existent player")
-            return
-
-        player.reset_ready()
-        self.m_finished.append(uid)
 
     #####################
     ### get functions ###
@@ -311,17 +260,19 @@ class Room:
         # check for enough players
         if len(self.m_players) <= 1:
             await self.m_startAlone(self.m_players[0].get_sid())
-
             self.m_isStarted = True
 
             return None
+
+        for player in self.m_players:
+            self.m_writeOffChips(player.get_uid(), (self.m_bet/len(self.m_players)) * -1)
 
         # set DATA
         self.set_ready()
         self.reset_party()
         self.init_party()
 
-        await self.all_distrib()
+        await self.distribute_all()
 
         # set players roles
         self.choose_first_turn()
@@ -347,6 +298,11 @@ class Room:
         await self.m_startCallback(self.m_rid, self.m_trump, self.m_bet, self.get_idOfAllPlayers())
 
     async def finish(self):
+
+        for player in self.m_players:
+            self.m_writeOffChips(player.get_uid(), self.m_bet/len(self.m_players))
+
+
         self.m_status = Status.FINISH
 
         # win multipliers
@@ -401,7 +357,7 @@ class Room:
         await self.m_giveRoles_callback(self.m_players)
 
         print("distrib all")
-        await self.all_distrib()
+        await self.distribute_all()
 
         # are there any players who finished the game
         for player in self.m_players:
@@ -486,11 +442,21 @@ class Room:
                     self.m_battlefield.attack(card)
                     await self.m_throwCallback(self.get_sidOfAllPlayers(), card, UId, sid)
 
-        print(card)
-        print(type(card))
-        print(card.get_byte())
-
         player.m_cards.remove(card)
+        if len(player.m_cards) == 0:
+
+            prise = self.m_bet / 2
+            self.m_bet - prise
+
+            self.m_writeOffChips(player.get_uid(), prise)
+            self.m_playerWon(player.get_sid())
+            player.status = status.won
+
+            not_finished = 0
+            for pl in self.m_players:
+                if pl.status != status.won: not_finished += 1
+            if not_finished <= 1:
+                await self.finish()
 
     def can_throw_card(self, card):
         nominals = []
@@ -547,7 +513,7 @@ class Room:
     async def cl_grab(self, uid):
         if self.get_player(uid).get_RoleEnum() == Role.main:
             print("The client: " + str(uid) + " is ready to grab")
-            self.get_mainTurnPlayer().status = status.grabing
+            self.get_mainTurnPlayer().status = status.grabbing
 
             await self.m_clGrabCallback(self.m_rid)
 
@@ -625,7 +591,7 @@ class Room:
         await self.end_turn()
 
     async def cl_pass(self, uid):
-        if self.get_mainTurnPlayer().status != status.grabing:
+        if self.get_mainTurnPlayer().status != status.grabbing:
             return
 
         if self.get_player(uid).status == status.throwing:
@@ -641,7 +607,7 @@ class Room:
 
     #################################
 
-    async def distrib(self, uid):
+    async def distribute(self, uid):
         player = self.get_player(uid)
 
         if not player:
@@ -660,19 +626,25 @@ class Room:
 
         cards = []
         for i in range(count_cards):
-            cards.append(self.m_mainDeck.pop())
+            if (len(self.m_mainDeck) == 1):
+                cards.append(self.m_mainDeck.pop())
+                await self.m_trumpIsDone(self)
+            elif(len(self.m_mainDeck) == 0):
+                await self.m_deckIsEmpty(self)
+            else:
+                cards.append(self.m_mainDeck.pop())
 
         player.take_cards(cards.copy())
         await self.m_distributionCallback(cards, player.get_sid(), uid, self.m_rid)
 
         return cards
 
-    async def all_distrib(self):
+    async def distribute_all(self):
         for p in self.m_players:
             if not p.is_playing():
                 continue
 
-            await self.distrib(p.get_uid())
+            await self.distribute(p.get_uid())
 
     def choose_first_turn(self):
 
