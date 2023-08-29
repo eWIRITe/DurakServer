@@ -301,7 +301,7 @@ class GameFunctions:
     @staticmethod
     async def cl_trumpIsDone(room):
         message = {
-            "eventType": "trumpIsDone",
+            "eventType": "trump_done",
             "data": "NoNData"
         }
         for sid in room.get_sidOfAllPlayers():
@@ -310,7 +310,7 @@ class GameFunctions:
     @staticmethod
     async def cl_colodaIsEmpty(room):
         message = {
-            "eventType": "colodaIsEmpty",
+            "eventType": "coloda_empty",
             "data": "NoNData"
         }
         for sid in room.get_sidOfAllPlayers():
@@ -358,11 +358,10 @@ class GameFunctions:
 
     @staticmethod
     async def cl_throw(playersSId, card, UId, _sid):
-        # card would looks like: "{"suit": "♥", "nominal": "2 "}"
+        # card would look like: "{"suit": "♥", "nominal": "2 "}"
 
         # generate card
-        card = {"suit": str(card.__str__()[-1]),
-                "nominal": str(card.__str__()[0]) + str(card.__str__()[1])}
+        card = {"suit": str(card.__str__()[-1]), "nominal": str(card.__str__()[0]) + str(card.__str__()[1])}
 
         # destroy player card
         data = {"UId": int(UId), "card": card}
@@ -694,18 +693,28 @@ class UserEntering:
 
     @staticmethod
     async def playerWon(room, player):
-
-        chips = DataBase.execSQL('SELECT Chips FROM Users WHERE ID = ?;', (player.get_uid(),))
-        winners_data = {
-            "chips": chips
-        }
+        # send, who's won
         players_data = {
             "UserID": player.get_uid()
         }
         for sid in room.get_sidOfAllPlayers():
             await sid.send(json.dumps({"eventType": "playerWon", "data": json.dumps(players_data)}))
 
-        await player.get_sid().send(json.dumps({"eventType": "won", "data": json.dumps(winners_data)}))
+        # update winner's chips
+        if player.get_uid():
+            chips = DataBase.execSQL('SELECT Chips FROM Users WHERE ID = ?;', (player.get_uid(),))
+            data = {
+                "chips": chips
+            }
+
+            message = {
+                "eventType": "Chips",
+                "data": json.dumps(data)
+            }
+        else:
+            message = {"eventType": "error", "data": "get chips error"}
+
+        await player.get_sid().send(json.dumps(message))
 
     @staticmethod
     async def createRoom(token, UserID, data, sid):
@@ -801,7 +810,8 @@ class UserEntering:
         await sid.send(json.dumps({"eventType": "cl_enterInTheRoom", "data": f"{data}"}))
 
         for _sid in room.get_sidOfAllPlayers():
-            if _sid != sid: await _sid.send(json.dumps({"eventType": "cl_joinRoom", "data": json.dumps({"playerID": UserID})}))
+            if _sid != sid: await _sid.send(
+                json.dumps({"eventType": "cl_joinRoom", "data": json.dumps({"playerID": UserID})}))
 
     @staticmethod
     async def exitRoom(sid, RoomID, UserID):
@@ -834,7 +844,8 @@ class UserEntering:
         if UserID and UserID >= 0:
             if DEBUG: print("User: " + name + ", sucsessedLogin")
             await sid.send(
-                json.dumps({"eventType": "sucsessedLogin", "data": "{'token': '%s', 'name': '%s', 'UserID': '%s'}" % (auth.new_token(UserID), name, UserID)}))
+                json.dumps({"eventType": "sucsessedLogin", "data": "{'token': '%s', 'name': '%s', 'UserID': '%s'}" % (
+                auth.new_token(UserID), name, UserID)}))
         else:
             await sid.send(json.dumps({"eventType": "error", "data": "the entered data is incorrect"}))
 
@@ -858,7 +869,8 @@ class UserEntering:
                 print("User: " + str(UserID) + ", want to change email: " + current_email)
                 if current_email == old_email:
                     DataBase.execSQL('UPDATE Users SET Email=? WHERE ID=?;', (new_email, UserID))
-                    await sid.send(json.dumps({"eventType": "Sucsessed_emailChange", "data": json.dumps({"newEmail": new_email})}))
+                    await sid.send(
+                        json.dumps({"eventType": "Sucsessed_emailChange", "data": json.dumps({"newEmail": new_email})}))
                 else:
                     await sid.send(json.dumps({"eventType": "error", "data": "Old email address not found"}))
             else:

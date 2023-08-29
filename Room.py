@@ -265,7 +265,7 @@ class Room:
             return None
 
         for player in self.m_players:
-            self.m_writeOffChips(player.get_uid(), (self.m_bet/len(self.m_players)) * -1)
+            self.m_writeOffChips(player.get_uid(), (self.m_bet / len(self.m_players)) * -1)
 
         # set DATA
         self.set_ready()
@@ -300,8 +300,7 @@ class Room:
     async def finish(self):
 
         for player in self.m_players:
-            self.m_writeOffChips(player.get_uid(), self.m_bet/len(self.m_players))
-
+            self.m_writeOffChips(player.get_uid(), self.m_bet / len(self.m_players))
 
         self.m_status = Status.FINISH
 
@@ -373,12 +372,6 @@ class Room:
         # the game is over?
         # the only one player
         if num_playing_players == 1:
-            # normal game over
-            for player in self.m_players:
-                if player.is_playing():
-                    self.add_finished(player.get_uid())
-                    break
-
             await self.finish()
             return
 
@@ -448,8 +441,8 @@ class Room:
             prise = self.m_bet / 2
             self.m_bet - prise
 
-            self.m_writeOffChips(player.get_uid(), prise)
-            self.m_playerWon(player.get_sid())
+            await self.m_writeOffChips(player.get_uid(), prise)
+            self.m_playerWon(self, player)
             player.status = status.won
 
             not_finished = 0
@@ -482,7 +475,8 @@ class Room:
         if player.get_RoleEnum == Role.main:
             self.m_battlefield.beat(atackCard, atackingCard, self.m_trump)
 
-        if len(self.m_battlefield) != 0 and atackCard.get_nominal().value == atackingCard.get_nominal().value: await self.transfer()
+        if len(
+            self.m_battlefield) != 0 and atackCard.get_nominal().value == atackingCard.get_nominal().value: await self.transfer()
 
         await self.m_beatCallback(sid, self.m_rid, uid, atackCard, atackingCard)
 
@@ -629,8 +623,9 @@ class Room:
             if (len(self.m_mainDeck) == 1):
                 cards.append(self.m_mainDeck.pop())
                 await self.m_trumpIsDone(self)
-            elif(len(self.m_mainDeck) == 0):
+            elif (len(self.m_mainDeck) == 0):
                 await self.m_deckIsEmpty(self)
+                return
             else:
                 cards.append(self.m_mainDeck.pop())
 
