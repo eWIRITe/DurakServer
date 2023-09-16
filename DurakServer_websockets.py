@@ -625,7 +625,7 @@ class PlayingMetods:
         room.whatsup()
 
     @staticmethod
-    async def Battle(sid, data, UserID, RoomID):
+    async def battle(sid, data, UserID, RoomID):
         room = g_durak_rooms[str(RoomID)]
 
         if not UserID:
@@ -850,9 +850,10 @@ class UserEntering:
             await sid.send(json.dumps({"eventType": "error", "data": "the entered data is incorrect"}))
 
     @staticmethod
-    async def write_off_chips(player, chips_to_write_off):
-        if player:
-            DataBase.execSQL('UPDATE Users SET Chips+=? WHERE ID=?;', (chips_to_write_off, player.get_uid()))
+    async def write_off_chips(user_id, chips_to_write_off):
+        if user_id:
+            # Assuming you have a valid database connection named 'db_connection'
+            DataBase.execSQL('UPDATE Users SET Chips = Chips + ? WHERE ID = ?;', (chips_to_write_off, user_id))
 
     @staticmethod
     async def changeEmail(sid, token, old_email, new_email):
@@ -993,11 +994,8 @@ async def ws_handle(websocket, path):
                 if action == "srv_Throw":
                     await PlayingMetods.UserTrowCard(data["RoomID"], data["card"], data["UserID"], sid)
 
-                elif action == "srv_whatsup":
-                    await PlayingMetods.Whatsup(data, data["token"], auth.get_uid(data["token"]), data["RoomID"])
-
                 elif action == "srv_battle":
-                    await PlayingMetods.Battle(sid, data, data["UserID"], data["RoomID"])
+                    await PlayingMetods.battle(sid, data, data["UserID"], data["RoomID"])
 
                 elif action == "srv_transfer":
                     await PlayingMetods.Transfer(data, auth.get_uid(data["token"]), data["RoomID"], sid, data["token"])

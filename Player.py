@@ -63,10 +63,12 @@ class Player:
         return len(self.m_cards)
 
     def has_card(self, card):
-        print(card)
-        print(self.m_cards)
-
-        return card in self.m_cards
+        if card in self.m_cards:
+            return True
+        else:
+            print("Player's cards:" + str(self.m_cards))
+            print("Need card: " + str(card))
+            return False
 
     def has_cards(self, cards):
         for card in cards:

@@ -44,3 +44,14 @@ class status(Enum):
     folding = 3
     grabbing = 4
     passing = 5
+
+
+class LastMove(Enum):
+    folding = 0
+    grabbing = 1
+
+
+class GameType(Enum):
+    usual = 0,
+    ThrowIn = 1,
+    Transferable = 2

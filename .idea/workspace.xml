@@ -5,15 +5,25 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7d593e14-11d9-4ef8-a1b4-d48ffd7b2928" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Battlefield.py" beforeDir="false" afterPath="$PROJECT_DIR$/Battlefield.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/DurakServer_websockets.py" beforeDir="false" afterPath="$PROJECT_DIR$/DurakServer_websockets.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Enums.py" beforeDir="false" afterPath="$PROJECT_DIR$/Enums.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Player.py" beforeDir="false" afterPath="$PROJECT_DIR$/Player.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Room.py" beforeDir="false" afterPath="$PROJECT_DIR$/Room.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/durak.db" beforeDir="false" afterPath="$PROJECT_DIR$/durak.db" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -37,11 +47,12 @@
     &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
     &quot;git-widget-placeholder&quot;: &quot;main&quot;,
     &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/DurakServer&quot;,
+    &quot;last_opened_file_path&quot;: &quot;I:/WIRIT-python/telegramm_helper/main.py&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
     &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
 }</component>
@@ -60,6 +71,17 @@
       <workItem from="1692914326183" duration="900000" />
       <workItem from="1693142518587" duration="6205000" />
       <workItem from="1693314534785" duration="6150000" />
+      <workItem from="1693347156829" duration="1240000" />
+      <workItem from="1693363956451" duration="71000" />
+      <workItem from="1693588958047" duration="1966000" />
+      <workItem from="1693675958487" duration="7149000" />
+      <workItem from="1693770845814" duration="6043000" />
+      <workItem from="1694046534237" duration="838000" />
+      <workItem from="1694220862273" duration="619000" />
+      <workItem from="1694361236093" duration="91000" />
+      <workItem from="1694370136711" duration="97000" />
+      <workItem from="1694462697547" duration="429000" />
+      <workItem from="1694865996057" duration="4922000" />
     </task>
     <servers />
   </component>
@@ -81,7 +103,9 @@
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/DurakServer_websockets_py$DurakServer_websockets.coverage" NAME="DurakServer_websockets Coverage Results" MODIFIED="1693328500169" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/DurakServer_websockets_py$Room.coverage" NAME="Room Coverage Results" MODIFIED="1693327874101" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/DurakServer_websockets_py$DurakServer_websockets.coverage" NAME="DurakServer_websockets Coverage Results" MODIFIED="1694876284099" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/DurakServer_websockets_py$Battlefield.coverage" NAME="Battlefield Coverage Results" MODIFIED="1694875241230" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/DurakServer_websockets_py$main.coverage" NAME="main Coverage Results" MODIFIED="1694462980987" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="I:/WIRIT-python/telegramm_helper" />
+    <SUITE FILE_PATH="coverage/DurakServer_websockets_py$Room.coverage" NAME="Room Coverage Results" MODIFIED="1694047373870" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>
